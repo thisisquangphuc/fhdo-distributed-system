@@ -1,5 +1,6 @@
 #include "logger.h"
 #include <iostream>
+#include <filesystem>
 
 void init_logger() {
     try {
@@ -9,7 +10,15 @@ void init_logger() {
         console_sink->set_pattern("[%^%l%$] %v");    // Log level in color
 
         // Create a file sink
-        auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/truck_platooning.log", true);
+        std::shared_ptr<spdlog::sinks::basic_file_sink_mt> file_sink;
+        if (std::filesystem::exists("build/bin/logs/truck_platooning.log")) {
+            // File exists, append logs
+            file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/truck_platooning.log", true);
+        } else {
+            // File doesn't exist, create a new one
+            std::filesystem::create_directories("logs");  // Create the "logs" directory if it doesn't exist
+            file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("logs/truck_platooning.log", false);
+        }
         file_sink->set_level(spdlog::level::debug);  // File logs at DEBUG and above
         file_sink->set_pattern("[%Y-%m-%d %H:%M:%S] [%l] %v"); // Detailed log format
 

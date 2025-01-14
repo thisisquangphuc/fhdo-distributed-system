@@ -7,3 +7,5 @@
  */
 
 #define TOTAL_TRUCKS 5
+
+#define SERVICE_ENV_FILE_DEFAULT "/src/dataset.env"

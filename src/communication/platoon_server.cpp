@@ -15,7 +15,7 @@ PlatoonServer::~PlatoonServer() {
 }
 
 // Initialize the server socket
-bool PlatoonServer::initializeSocket(std::string &error_message) {
+bool PlatoonServer::initializeSocket(std::string host_ip, std::string &error_message) {
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket < 0) {
         error_message = "Failed to create socket.";
@@ -32,7 +32,7 @@ bool PlatoonServer::initializeSocket(std::string &error_message) {
     sockaddr_in serverAddress{};
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(port);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    serverAddress.sin_addr.s_addr = inet_addr(host_ip.c_str()); //INADDR_ANY;
 
     if (bind(serverSocket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) < 0) {
         error_message = "Failed to bind socket to port " + std::to_string(port);
@@ -51,8 +51,8 @@ bool PlatoonServer::initializeSocket(std::string &error_message) {
 }
 
 // Start the server
-bool PlatoonServer::startServer(std::string &error_message) {
-    return initializeSocket(error_message);
+bool PlatoonServer::startServer(std::string host_ip, std::string &error_message) {
+    return initializeSocket(host_ip, error_message);
 }
 
 // Accept connections

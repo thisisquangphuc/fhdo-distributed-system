@@ -1,0 +1,34 @@
+1. Join platoon
+- Send the msg to join to LeadingTruck -> Authentication  - done
+- Joining msg (....)
+- LEading cal -> Ok -> sync(gps,xxx) 
+                -> slow down, new truck is joining 
+- Following -> distance_cal() -> sysnc ok -> Leading 
+
+- Leading -> update trucks info 
+
+1.5 Normal operation 
+- Send msg (info), period T t(s) 
+- Check EMG condition via TCP/UDP 
+
+2. Leave Platoon 
+- Send the msg to leave to LeadingTruck 
+
+- LEading cal -> OK you can leave -> sync(gps,xxx) 
+                -> other trucks ->  slow down, new truck is leaving 
+- Following trucks -> preparetoLeave(data) -> turn on turing -> Leave success -> close socket
+
+- Leading -> upadate trucks info 
+
+-Following -> cal() -> sysnc ok -> Leading 
+
+3. Emergency Brake 
+- Query data -> broadcast to all trucks using UDP  (backup)
+- Sent directly to trucks using TCP 
+
+4. Obstacle avoidancce (car acrosses the platoon)
+- Trucks found Obstacle -> send to LeadingTruck
+- LEadingtruck cal -> send to other trucks 
+                    -> slow down
+
+
