@@ -1,13 +1,11 @@
-/**
- * @file env.h
- * @author bs
- * @brief
- * @version 0.1
- * @date 2022-12-07
+/*
+ * Author : Phuc Le
  *
- * @copyright Copyright (c) 2022 FuelCloud, Inc.
+ * Created on Tue Jan 14 2025
  *
+ * Copyright (c) 2025 Acadamic Purpose. All rights reserved.
  */
+
 
 #pragma once
 

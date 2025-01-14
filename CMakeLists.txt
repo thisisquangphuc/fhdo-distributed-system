@@ -29,17 +29,18 @@ add_executable(FollowingTruck ${SOURCE_FOLLOWING_TRUCK} ${SOURCES})
 #Libraries
 find_package(Threads REQUIRED)
 find_package(spdlog REQUIRED)
-
-
+find_package(nlohmann_json REQUIRED)
 
 target_link_libraries(LeadingTruck PRIVATE
     Threads::Threads 
     spdlog::spdlog
+    nlohmann_json::nlohmann_json
 )
 
 target_link_libraries(FollowingTruck PRIVATE
     Threads::Threads 
     spdlog::spdlog
+    nlohmann_json::nlohmann_json
 )
 
 #Compiler options
