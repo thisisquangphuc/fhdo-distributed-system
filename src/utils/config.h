@@ -7,5 +7,6 @@
  */
 
 #define TOTAL_TRUCKS 5
+#define MAX_RESEND_MESS 5
 
 #define SERVICE_ENV_FILE_DEFAULT "/src/dataset.env"

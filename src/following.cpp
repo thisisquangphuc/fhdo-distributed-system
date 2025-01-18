@@ -1,46 +1,192 @@
-// C++ program to illustrate the client application in the
-// socket programming
-#include <cstring>
+#include <stdio.h>
 #include <iostream>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <filesystem>
 #include <unistd.h>
-#include <arpa/inet.h>
+#include <omp.h>
+#include <pthread.h> 
+#include "communication/platoon_client.h"
+#include "control/following_truck.h"
+
+unsigned int microsecond = 1000000;
+
+typedef enum {
+    IDLE,
+    JOINING,
+    LEAVING,
+    NORMAL_OPERATION,
+    SPEED_UP,
+    SLOW_DOWN,
+    EMERGENCY_BRAKE,
+    CONNECTION_LOST,
+} TruckState;
+
+TruckState current_state = IDLE;
+TruckState next_state = current_state;
+
+TruckState get_current_state() {
+    return current_state;
+}
+
+typedef enum {
+    NONE,
+    ASKTOJOIN,
+    ASKTOLEAVE
+} TruckRequest;
+
+TruckRequest request;
+
+void following_fsm();
+void simulate_request();
+void send_current_status();
+bool check_emergency_brake();
+void load_environment(std::string env_file);
+
+FollowingTruck followingTruck;
 
 int main()
 {
-    // creating socket
-    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    init_logger();
+    
+    //load evironment
+    load_environment(std::filesystem::current_path().u8string() + "/.env");
 
-    // specifying address
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(8080);
-    serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");//INADDR_ANY;
-
-    // sending connection request
-    int res = connect(clientSocket, (struct sockaddr*)&serverAddress,
-            sizeof(serverAddress));
-
-    if (clientSocket < 0) {
-        perror("Socket creation failed");
-        return -1;
+    #pragma omp parallel sections 
+    {
+        #pragma omp section
+        {
+            following_fsm();
+        }
+        #pragma omp section
+        {
+            simulate_request();
+        }
     }
-
-    if (res < 0) {
-        perror("Connection failed");
-        return -1;
-    }
-
-    // sending data
-    // std::string message = "Hello, server! " + std::string("expectedToken123");
-    const char *authToken = "expectedToken123";
-    ssize_t bytesSent = send(clientSocket, authToken, strlen(authToken), 0);
-    if (bytesSent < 0) {
-        perror("Send failed");
-    }
-    // closing socket
-    close(clientSocket);
 
     return 0;
+}
+
+// 
+void following_fsm() {
+    while (1) {
+        // spdlog::info(current_state);
+        switch (current_state) {
+            case IDLE:
+                if (request == ASKTOJOIN) {
+                    if (followingTruck.askToJoinPlatoon("expectedToken123")) {
+                        spdlog::info("Authenticate successfully.");
+                        next_state = JOINING;
+                        spdlog::info(next_state);
+                    }
+                } 
+                break;
+
+            case JOINING:
+                spdlog::info("Joining platoon ...");
+                if (followingTruck.joiningPlatoon()) { 
+                    next_state = NORMAL_OPERATION;
+                } else if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+                    spdlog::info("Failed to join platoon.");
+                    next_state = IDLE;
+                } 
+                break;
+
+            case NORMAL_OPERATION:
+                // #pragma omp parallel sections 
+                // {
+                //     #pragma omp section
+                //     {
+                //         send_current_status();
+                //     }   
+                //     #pragma omp section 
+                //     {
+                //         if (check_emergency_brake()) next_state = EMERGENCY_BRAKE;
+                //     }
+                //     #pragma omp section
+                //     {
+                        // while (true) {
+                            // std::cout << "aaaaaaaaaaaaa " << request << std::endl;
+                            if (request == ASKTOLEAVE) {
+                                followingTruck.resetRetryCounter();
+                                next_state = LEAVING;
+                                // break;
+                            }
+                        // }
+                //     }
+                // }
+                break;
+
+            case SPEED_UP:
+                break;
+
+            case SLOW_DOWN:
+                break;
+
+            case EMERGENCY_BRAKE:
+                break;
+
+            case CONNECTION_LOST:
+                break;
+
+            case LEAVING:
+                if (followingTruck.leavingPlatoon()) {
+                    spdlog::info("Leaving platoon successfully.");
+                    next_state = IDLE;
+                } else if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+                    spdlog::info("Cannot leave platoon. Please try again.");
+                    followingTruck.resetRetryCounter();
+                    next_state = NORMAL_OPERATION;
+                }
+                break;
+
+            default:
+                next_state = IDLE;
+                break;
+        }
+        current_state = next_state;
+    }
+}
+
+// 
+void simulate_request() {
+    int input;
+    while (1) {
+        std::cout << "Request to server (1-joinPlatoon, 2-leavePlatoon): "; 
+        std::cin >> input;
+        request = (TruckRequest)input;
+        std::cout << "Request value: " << request << std::endl;
+        sleep(1);
+        request = NONE;
+    }
+}
+
+// 
+void send_current_status() {
+    while (next_state == NORMAL_OPERATION) {
+        if (!followingTruck.sendCurrentStatus()) {
+            spdlog::warn("Failed to send current status to server.");
+        }
+        // if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+        //     spdlog::error("Connection lost with server.");
+        // }
+        // send 2 seconds
+        sleep(2); 
+    }
+}
+
+//
+bool check_emergency_brake() {
+    while (!followingTruck.listenForEmergency());
+    return true;
+}
+
+//
+void load_environment(std::string env_file) {
+
+    std::string env_file_string = env_file;
+
+    if (env_file_string.empty())
+        env_file_string = SERVICE_ENV_FILE_DEFAULT;
+    env_init(env_file_string.c_str());
+
+    std::cout << "Project Name: " << env_get("PROJECT_NAME", "Unknown") << std::endl;
 }
