@@ -3,7 +3,6 @@
 #include <iostream>
 #include <filesystem>
 #include <unistd.h>
-#include <omp.h>
 #include <pthread.h> 
 #include "communication/platoon_client.h"
 #include "control/following_truck.h"
@@ -52,9 +51,6 @@ void* send_current_status(void* arg);
 void* check_lead_message(void* arg);
 void* request_to_lead(void* arg);
 void* emergency_brake(void* arg);
-// void send_current_status();
-// void check_lead_message();
-// void request_to_lead();
 void load_environment(std::string env_file);
 
 FollowingTruck followingTruck;
@@ -146,7 +142,7 @@ void* following_fsm(void* arg) {
                     next_state = LEAVING;
                 } 
 
-                if (leadingNoti = NORMAL) {
+                if (leadingNoti == NORMAL) {
                     pthread_join(thread_emg_brake, NULL);
                     next_state = NORMAL_OPERATION;
                 }
@@ -206,7 +202,7 @@ void* simulate_request(void* arg) {
 void* send_current_status(void* arg) {
     pthread_detach(pthread_self()); 
 
-    spdlog::debug("Send current status to LEADING {:d}", pthread_self());
+    spdlog::debug("Send current status to LEADING");
     while (get_current_state() == NORMAL_OPERATION) {
         if (!followingTruck.sendCurrentStatus()) {
             spdlog::warn("Failed to send current status to server.");
@@ -225,7 +221,7 @@ void* send_current_status(void* arg) {
 void* check_lead_message(void* arg) {
     pthread_detach(pthread_self()); 
 
-    spdlog::debug("Check LEADING notification {:d}", pthread_self());
+    spdlog::debug("Check LEADING notification");
     while (get_current_state() == NORMAL_OPERATION) {
         if (followingTruck.listenForLeading()) {
             leadingNoti = BRAKE;
@@ -240,7 +236,7 @@ void* check_lead_message(void* arg) {
 void* request_to_lead(void* arg) { 
     pthread_detach(pthread_self());
 
-    spdlog::debug("Send request to LEADING {:d}", pthread_self());
+    spdlog::debug("Send request to LEADING");
     while (get_current_state() == NORMAL_OPERATION);
 
     pthread_exit(NULL);
@@ -250,7 +246,7 @@ void* request_to_lead(void* arg) {
 void* emergency_brake(void* arg) {
     pthread_detach(pthread_self()); 
 
-    spdlog::debug("Emergency Brake {:d}", pthread_self());
+    spdlog::debug("Emergency Brake");
     while (get_current_state() == EMERGENCY_BRAKE) { 
         followingTruck.emergencyBrake();
         sleep(1);

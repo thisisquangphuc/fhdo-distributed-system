@@ -122,7 +122,8 @@ bool FollowingTruck::leavingPlatoon() {
 
     spdlog::info("Waiting for approval from LEADING Truck ... ");
     server_rsp = json::parse(this->platoonClient.receiveMessage());
-    spdlog::info("Response from LEADING truck : {:s}", server_rsp.dump());
+    spdlog::info("Response from LEADING truck");
+    std::cout << server_rsp.dump() << std::endl;
 
     // Prepare and leave the platoon
     spdlog::info("Leaving platoon ...");  
@@ -146,7 +147,7 @@ bool FollowingTruck::sendCurrentStatus() {
     status_mess["timestamp"] = time(NULL);
 
     spdlog::info("Send truck status to LEADING truck.");
-    std::cout << this->status_mess.dump(3) << std::endl;
+    std::cout << status_mess.dump(3) << std::endl;
 
     if (!this->platoonClient.sendMessage(status_mess.dump(), error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
@@ -160,7 +161,7 @@ bool FollowingTruck::sendCurrentStatus() {
 //
 bool FollowingTruck::listenForLeading() {
     std::string error_message;
-    std::string leading_rsp;
+    json leading_rsp;
     bool emergency = true;
 
     spdlog::info("Listening for LEADING Truck ... ");
@@ -207,10 +208,12 @@ void FollowingTruck::monitorDistance() {
     if (this->truck_speed > 0) {
         double front_d = (double)TRUCK_SAFE_DISTANCE * (rand() % 7 + 5) / 10;  
         double back_d = (double)TRUCK_SAFE_DISTANCE * (rand() % 7 + 5) / 10;
+    
+        this->truck_distance["front"] = front_d;
+        this->truck_distance["back"] = back_d;
     }
 
-    this->truck_distance["front"] = front_d;
-    this->truck_distance["back"] = back_d;
+
 }
 
 //
