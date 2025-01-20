@@ -10,6 +10,10 @@
 // #define SAFE_DISTANCE 10
 // #define BRAKING_DISTANCE 7
 
+// void send_braking_signal();
+// double get_leading_pos();
+// double get_following_pos();
+
 // double calculate_distance() {
 //     // Assume we have 2 trucks, will develop more trucks logic later
 //     double leading_pos = get_leading_pos();
@@ -32,9 +36,9 @@
 //     double distance = calculate_distance();
 //     while (1) {
 //         if (distance < SAFE_DISTANCE) {
-//             printf("Distance too close.\n");
+//             // printf("Distance too close.\n");
 //             if (is_braking_needed(distance)) {
-//                 printf("Send braking signals");
+//                 // printf("Send braking signals");
 //                 send_braking_signal();
 //                 //slow down 
 //             }
