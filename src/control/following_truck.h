@@ -1,5 +1,5 @@
 #ifndef FOLLOWING_TRUCK_H
-#define fOLLOWING_TRUCK_H
+#define FOLLOWING_TRUCK_H
 
 #include <iostream>
 #include <string>

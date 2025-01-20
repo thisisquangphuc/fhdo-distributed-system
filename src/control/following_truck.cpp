@@ -122,7 +122,8 @@ bool FollowingTruck::leavingPlatoon() {
 
     spdlog::info("Waiting for approval from LEADING Truck ... ");
     server_rsp = json::parse(this->platoonClient.receiveMessage());
-    spdlog::info("Response from LEADING truck : {:s}", server_rsp.dump());
+    spdlog::info("Response from LEADING truck");
+    std::cout << server_rsp.dump() << std::endl;
 
     // Prepare and leave the platoon
     spdlog::info("Leaving platoon ...");  
@@ -211,6 +212,8 @@ void FollowingTruck::monitorDistance() {
         this->truck_distance["front"] = front_d;
         this->truck_distance["back"] = back_d;
     }
+
+
 }
 
 //
