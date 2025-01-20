@@ -8,5 +8,7 @@
 
 #define TOTAL_TRUCKS 5
 #define MAX_RESEND_MESS 5
+#define MAX_BRAKE_FORCE 1.0
+#define TRUCK_SAFE_DISTANCE 3
 
 #define SERVICE_ENV_FILE_DEFAULT "/src/dataset.env"
