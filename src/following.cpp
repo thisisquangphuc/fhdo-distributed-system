@@ -1,90 +1,271 @@
-#include <cstring>
+#include <stdio.h>
+#include <stdlib.h> 
 #include <iostream>
-#include <netinet/in.h>
-#include <sys/socket.h>
+#include <filesystem>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <thread>
-#include <mutex>
-#include "communication/comm_msg.h"
+#include <omp.h>
+#include <pthread.h> 
+#include "communication/platoon_client.h"
+#include "control/following_truck.h"
 
-std::mutex printMutex; // Mutex to prevent message interleaving when printing
+unsigned int microsecond = 1000000;
 
-void handleServerResponse(int clientSocket) {
-    char buffer[1024];
-    while (true) {
-        // Receive data from the server
-        ssize_t bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
-        if (bytesReceived < 0) {
-            perror("Receive failed");
-            break;
-        } else if (bytesReceived == 0) {
-            // Server closed the connection
-            std::lock_guard<std::mutex> lock(printMutex);
-            std::cout << "Server disconnected." << std::endl;
-            break;
-        }
+//
+typedef enum {
+    IDLE,
+    JOINING,
+    LEAVING,
+    NORMAL_OPERATION,
+    SPEED_UP,
+    SLOW_DOWN,
+    EMERGENCY_BRAKE,
+    CONNECTION_LOST,
+} TruckState;
 
-        // Null-terminate the received data and print it
-        buffer[bytesReceived] = '\0';
-        {
-            std::lock_guard<std::mutex> lock(printMutex);
-            std::cout << "Received: " << buffer << std::endl;
-        }
-    }
+TruckState current_state = IDLE;
+TruckState next_state = current_state;
 
-    // Close the socket once the loop ends
-    close(clientSocket);
+TruckState get_current_state() {
+    return current_state;
 }
 
-int main() {
-    // Create socket
-    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (clientSocket < 0) {
-        perror("Socket creation failed");
-        return -1;
-    }
+//
+typedef enum {
+    NONE,
+    ASK_TO_JOIN,
+    ASK_TO_LEAVE
+} TruckRequest;
 
-    // Specify server address
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(8080);
-    serverAddress.sin_addr.s_addr = inet_addr("127.0.0.1");
+TruckRequest request;
 
-    // Send connection request
-    int res = connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
-    if (res < 0) {
-        perror("Connection failed");
-        close(clientSocket);
-        return -1;
-    }
+//
+typedef enum {
+    NORMAL,
+    BRAKE,
+    OSTACLE 
+} LeadNoti;
+LeadNoti leadingNoti;
 
-    // Send authentication token
-    const char* authToken = "PHUC01QUYEN02ISSAC03DAO04";
-    // Build a json in msg {
-    //     "cmd":"auth",
-    //     "contents": {
-    //         "auth_key":"PHUC01QUYEN02ISSAC03DAO04"
-    //     },
-    //     "msg_id": "<uuid>",
-    //     "timestamp":52451245
-    // }
-    char msg[1024];
-    snprintf(msg, sizeof(msg), "{\"cmd\":\"auth\",\"contents\":{\"auth_key\":\"%s\"},\"msg_id\":\"%s\",\"timestamp\":%s}", authToken, TruckMessage::generateUUID().c_str(), std::to_string(TruckMessage::generateTimestamp()).c_str());
+void* following_fsm(void* arg);
+void* simulate_request(void* arg);
+void* send_current_status(void* arg);
+void* check_lead_message(void* arg);
+void* request_to_lead(void* arg);
+void* emergency_brake(void* arg);
+// void send_current_status();
+// void check_lead_message();
+// void request_to_lead();
+void load_environment(std::string env_file);
 
+FollowingTruck followingTruck;
 
-    ssize_t bytesSent = send(clientSocket, msg, strlen(msg), 0);
-    if (bytesSent < 0) {
-        perror("Send failed");
-        close(clientSocket);
-        return -1;
-    }
+int main()
+{
+    init_logger();
+    
+    //load evironment
+    load_environment(std::filesystem::current_path().u8string() + "/.env");
 
-    // Create a thread to handle server responses
-    std::thread responseThread(handleServerResponse, clientSocket);
+    pthread_t thread_fsm;
+    pthread_t thread_req;
 
-    // Wait for the response thread to finish
-    responseThread.join();
+    pthread_create(&thread_fsm, NULL, &following_fsm, NULL);
+    pthread_create(&thread_req, NULL, &simulate_request, NULL);
 
+    spdlog::debug("Wait for main control threads EXIT");
+    pthread_join(thread_fsm, NULL); 
+    spdlog::debug("FSM thread EXIT");
+    pthread_join(thread_req, NULL); 
+    spdlog::debug("REQ thread EXIT");
+    
     return 0;
+}
+
+// 
+void* following_fsm(void* arg) {
+    pthread_detach(pthread_self()); 
+
+    pthread_t thread_send_stats;
+    pthread_t thread_check_lead;
+    // pthread_t thread_req_lead;
+    pthread_t thread_emg_brake;
+
+    while (true) {
+        switch (get_current_state()) {
+            case IDLE:
+                if (request == ASK_TO_JOIN) {
+                    if (followingTruck.askToJoinPlatoon()) {
+                        spdlog::info("Authenticate successfully.");
+                        next_state = JOINING;
+                    }
+                } 
+                break;
+
+            case JOINING:
+                spdlog::info("Joining platoon ...");
+                if (followingTruck.joiningPlatoon()) { 
+
+                    pthread_create(&thread_send_stats, NULL, &send_current_status, NULL);
+                    pthread_create(&thread_check_lead, NULL, &check_lead_message, NULL);
+                    // pthread_create(&thread_req_lead, NULL, &request_to_lead, NULL);
+
+                    next_state = NORMAL_OPERATION;
+                } else if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+                    spdlog::info("Failed to join platoon.");
+                    next_state = IDLE;
+                } 
+                break;
+
+            case NORMAL_OPERATION:
+
+                if (request == ASK_TO_LEAVE) {
+                    spdlog::info("Send leaving request.");
+                    next_state = LEAVING;
+                } 
+
+                if (leadingNoti == BRAKE) {
+                    spdlog::info("Receive emergency brake from LEADING truck.");
+                    followingTruck.startBraking();
+                    pthread_create(&thread_emg_brake, NULL, &emergency_brake, NULL);
+                    next_state = EMERGENCY_BRAKE;
+                }
+
+                break;
+
+            case SPEED_UP:
+                break;
+
+            case SLOW_DOWN:
+                break;
+
+            case EMERGENCY_BRAKE:
+
+                if (request == ASK_TO_LEAVE) {
+                    pthread_join(thread_emg_brake, NULL);
+                    spdlog::info("Send leaving request.");
+                    next_state = LEAVING;
+                } 
+
+                if (leadingNoti = NORMAL) {
+                    pthread_join(thread_emg_brake, NULL);
+                    next_state = NORMAL_OPERATION;
+                }
+                
+                break;
+
+            case CONNECTION_LOST:
+                break;
+
+            case LEAVING:
+                spdlog::debug("Wait for threads EXIT");
+
+                pthread_join(thread_send_stats, NULL); 
+                pthread_join(thread_check_lead, NULL); 
+                // pthread_join(thread_req_lead, NULL); 
+
+                spdlog::debug("Threads EXIT");
+
+                if (followingTruck.leavingPlatoon()) {
+                    spdlog::info("Leaving platoon successfully.");
+                    next_state = IDLE;
+                } else if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+                    spdlog::info("Cannot leave platoon. Please try again.");
+                    followingTruck.resetRetryCounter();
+                    next_state = NORMAL_OPERATION;
+                }
+                break;
+
+            default:
+                next_state = IDLE;
+                break;
+        }
+        current_state = next_state;
+    }
+    pthread_exit(NULL);
+}
+
+// 
+void* simulate_request(void* arg) {
+    pthread_detach(pthread_self()); 
+
+    int input;
+    while (true) {
+        std::cout << "Request to server (0->Exit Program, 1->Join Platoon, 2->Leave Platoon): "; 
+        std::cin >> input;
+        if (input == 0) break;
+        request = (TruckRequest)input;
+        std::cout << "Request value: " << request << std::endl;
+        sleep(1);
+        request = NONE;
+    }
+
+    pthread_exit(NULL);
+}
+
+// 
+void* send_current_status(void* arg) {
+    pthread_detach(pthread_self()); 
+
+    spdlog::debug("Send current status to LEADING {:d}", pthread_self());
+    while (get_current_state() == NORMAL_OPERATION) {
+        if (!followingTruck.sendCurrentStatus()) {
+            spdlog::warn("Failed to send current status to server.");
+        }
+        if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+            spdlog::error("Connection lost with server.");
+        }
+        // send every 2 seconds
+        sleep(2); 
+    }
+
+    pthread_exit(NULL); 
+}
+
+//
+void* check_lead_message(void* arg) {
+    pthread_detach(pthread_self()); 
+
+    spdlog::debug("Check LEADING notification {:d}", pthread_self());
+    while (get_current_state() == NORMAL_OPERATION) {
+        if (followingTruck.listenForLeading()) {
+            leadingNoti = BRAKE;
+        }
+        sleep(1);
+    } 
+
+    pthread_exit(NULL); 
+}
+
+//
+void* request_to_lead(void* arg) { 
+    pthread_detach(pthread_self());
+
+    spdlog::debug("Send request to LEADING {:d}", pthread_self());
+    while (get_current_state() == NORMAL_OPERATION);
+
+    pthread_exit(NULL);
+}
+
+//
+void* emergency_brake(void* arg) {
+    pthread_detach(pthread_self()); 
+
+    spdlog::debug("Emergency Brake {:d}", pthread_self());
+    while (get_current_state() == EMERGENCY_BRAKE) { 
+        followingTruck.emergencyBrake();
+        sleep(1);
+    }
+    pthread_exit(NULL);
+}
+
+//
+void load_environment(std::string env_file) {
+
+    std::string env_file_string = env_file;
+
+    if (env_file_string.empty())
+        env_file_string = SERVICE_ENV_FILE_DEFAULT;
+    env_init(env_file_string.c_str());
+
+    std::cout << "Project Name: " << env_get("PROJECT_NAME", "Unknown") << std::endl;
 }
