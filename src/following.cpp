@@ -44,7 +44,7 @@ typedef enum {
     BRAKE,
     OSTACLE 
 } LeadNoti;
-LeadNoti serverNoti;
+LeadNoti leadingNoti;
 
 void* following_fsm(void* arg);
 void* simulate_request(void* arg);
@@ -87,7 +87,7 @@ void* following_fsm(void* arg) {
 
     pthread_t thread_send_stats;
     pthread_t thread_check_lead;
-    pthread_t thread_req_lead;
+    // pthread_t thread_req_lead;
     pthread_t thread_emg_brake;
 
     while (true) {
@@ -107,7 +107,7 @@ void* following_fsm(void* arg) {
 
                     pthread_create(&thread_send_stats, NULL, &send_current_status, NULL);
                     pthread_create(&thread_check_lead, NULL, &check_lead_message, NULL);
-                    pthread_create(&thread_req_lead, NULL, &request_to_lead, NULL);
+                    // pthread_create(&thread_req_lead, NULL, &request_to_lead, NULL);
 
                     next_state = NORMAL_OPERATION;
                 } else if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
@@ -123,7 +123,7 @@ void* following_fsm(void* arg) {
                     next_state = LEAVING;
                 } 
 
-                if (serverNoti == BRAKE) {
+                if (leadingNoti == BRAKE) {
                     spdlog::info("Receive emergency brake from LEADING truck.");
                     followingTruck.startBraking();
                     pthread_create(&thread_emg_brake, NULL, &emergency_brake, NULL);
@@ -146,7 +146,7 @@ void* following_fsm(void* arg) {
                     next_state = LEAVING;
                 } 
 
-                if (serverNoti = NORMAL) {
+                if (leadingNoti = NORMAL) {
                     pthread_join(thread_emg_brake, NULL);
                     next_state = NORMAL_OPERATION;
                 }
@@ -161,7 +161,7 @@ void* following_fsm(void* arg) {
 
                 pthread_join(thread_send_stats, NULL); 
                 pthread_join(thread_check_lead, NULL); 
-                pthread_join(thread_req_lead, NULL); 
+                // pthread_join(thread_req_lead, NULL); 
 
                 spdlog::debug("Threads EXIT");
 
@@ -228,11 +228,10 @@ void* check_lead_message(void* arg) {
     spdlog::debug("Check LEADING notification {:d}", pthread_self());
     while (get_current_state() == NORMAL_OPERATION) {
         if (followingTruck.listenForLeading()) {
-            serverNoti = BRAKE;
-            break;
+            leadingNoti = BRAKE;
         }
         sleep(1);
-    }
+    } 
 
     pthread_exit(NULL); 
 }
@@ -252,7 +251,7 @@ void* emergency_brake(void* arg) {
     pthread_detach(pthread_self()); 
 
     spdlog::debug("Emergency Brake {:d}", pthread_self());
-    while (get_current_state() == EMERGENCY_BRAKE) { 
+    while (get_current_state() != EMERGENCY_BRAKE) { 
         followingTruck.emergencyBrake();
         sleep(1);
     }
