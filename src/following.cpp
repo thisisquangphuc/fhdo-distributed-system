@@ -251,7 +251,7 @@ void* emergency_brake(void* arg) {
     pthread_detach(pthread_self()); 
 
     spdlog::debug("Emergency Brake {:d}", pthread_self());
-    while (get_current_state() != EMERGENCY_BRAKE) { 
+    while (get_current_state() == EMERGENCY_BRAKE) { 
         followingTruck.emergencyBrake();
         sleep(1);
     }
