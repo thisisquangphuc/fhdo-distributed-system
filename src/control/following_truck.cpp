@@ -60,7 +60,6 @@ bool FollowingTruck::askToJoinPlatoon() {
     //     return false;
     // }
 
-    // this->platoonClient.closeClientSocket();
     return true;
 }
 
