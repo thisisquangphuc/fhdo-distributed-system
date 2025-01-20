@@ -52,9 +52,6 @@ void* send_current_status(void* arg);
 void* check_lead_message(void* arg);
 void* request_to_lead(void* arg);
 void* emergency_brake(void* arg);
-// void send_current_status();
-// void check_lead_message();
-// void request_to_lead();
 void load_environment(std::string env_file);
 
 FollowingTruck followingTruck;
