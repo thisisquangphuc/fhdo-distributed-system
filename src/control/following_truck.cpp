@@ -42,23 +42,22 @@ bool FollowingTruck::askToJoinPlatoon() {
 
     std::cout << auth_req.dump() << std::endl;
 
-    // this->port = env_get_int("PORT", 8080);
-    // this->host_ip = env_get("HOST_IP", "127.0.0.1");
+    this->port = env_get_int("PORT", 8080);
+    this->host_ip = env_get("HOST_IP", "127.0.0.1");
 
-    // // Print port and host info 
-    // spdlog::info("Port: {}", this->port);
-    // spdlog::info("Host IP: {}", this->host_ip);
+    // Print port and host info 
+    spdlog::info("Port: {}", this->port);
+    spdlog::info("Host IP: {}", this->host_ip);
 
-    // if (!this->platoonClient.startClient(this->port, this->host_ip, error_message)) {
-    //     std::cerr << "Error conneting to server: " << error_message << std::endl;
-    //     return false;
-    // }
+    if (!this->platoonClient.startClient(this->port, this->host_ip, error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        return false;
+    }
 
-    // // platoonClient.setAuthToken("expectedToken123");
-    // if (!this->platoonClient.sendMessage(auth_req.dump(), error_message)) {
-    //     std::cerr << "Error conneting to server: " << error_message << std::endl;
-    //     return false;
-    // }
+    if (!this->platoonClient.sendMessage(auth_req.dump(), error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        return false;
+    }
 
     return true;
 }
@@ -70,33 +69,33 @@ bool FollowingTruck::joiningPlatoon() {
     json leading_rsp;
 
     spdlog::info("Waiting to receive truck info from Leading ... ");
-    // leading_rsp = json::parse(this->platoonClient.receiveMessage()); 
+    leading_rsp = json::parse(this->platoonClient.receiveMessage()); 
 
-    // if (leading_rsp["cmd"] != "auth_ok") {
-    //     spdlog::info("Authentication failed.");
-    //     return false;
-    // }
+    if (leading_rsp["cmd"] != "auth_ok") {
+        spdlog::info("Authentication failed.");
+        return false;
+    }
 
     // Do calculation and join platoon
     spdlog::info("Joining from the end of platoon system.");  
-    // this->truck_id = leading_rsp["contents"]["id"];
+    this->truck_id = leading_rsp["contents"]["id"];
     this->truck_distance["front"] = TRUCK_SAFE_DISTANCE;
     this->truck_distance["back"] = 0.0;
     this->truck_status = "running";
 
-    // this->updateCurrentStatus();
+    this->updateCurrentStatus();
 
-    // done_message = this->truck_info;
-    // done_message["cmd"] = "join";
-    // done_message["msg_id"] = this->msg_id++;
-    // done_message["timestamp"] = time(NULL);
+    done_message = this->truck_info;
+    done_message["cmd"] = "join";
+    done_message["msg_id"] = this->msg_id++;
+    done_message["timestamp"] = time(NULL);
 
     std::cout << "Done joining " << done_message.dump(3) << std::endl;
-    // if (!this->platoonClient.sendMessage(done_message.dump(), error_message)) {
-    //     std::cerr << "Error conneting to server: " << error_message << std::endl;
-    //     this->retry_times++;
-    //     return false;
-    // }
+    if (!this->platoonClient.sendMessage(done_message.dump(), error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        this->retry_times++;
+        return false;
+    }
 
     this->retry_times = 0;
     return true;
@@ -115,20 +114,20 @@ bool FollowingTruck::leavingPlatoon() {
 
     spdlog::info("Asking to leave the platoon ...");
     std::cout << leave_req.dump() << std::endl;
-    // if (!this->platoonClient.sendMessage(leave_req.dump(), error_message)) {
-    //     std::cerr << "Error conneting to server: " << error_message << std::endl;
-    //     this->retry_times++;
-    //     return false;
-    // }
+    if (!this->platoonClient.sendMessage(leave_req.dump(), error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        this->retry_times++;
+        return false;
+    }
 
-    // spdlog::info("Waiting for approval from LEADING Truck ... ");
-    // server_rsp = json::parse(this->platoonClient.receiveMessage());
-    // spdlog::info("Response from LEADING truck : {:s}", server_rsp.dump());
+    spdlog::info("Waiting for approval from LEADING Truck ... ");
+    server_rsp = json::parse(this->platoonClient.receiveMessage());
+    spdlog::info("Response from LEADING truck : {:s}", server_rsp.dump());
 
     // Prepare and leave the platoon
     spdlog::info("Leaving platoon ...");  
     
-    // this->platoonClient.closeClientSocket();
+    this->platoonClient.closeClientSocket();
     this->retry_times = 0;
     return true;
 }
@@ -136,16 +135,24 @@ bool FollowingTruck::leavingPlatoon() {
 //
 bool FollowingTruck::sendCurrentStatus() {
     std::string error_message;
+    json status_mess; 
 
     this->updateCurrentStatus();
 
-    spdlog::info("Send truck status to LEADING truck.");
+    status_mess = this->truck_info;
+    status_mess["truck_id"] = this->truck_id;
+    status_mess["cmd"] = "status";
+    status_mess["msg_id"] = this->msg_id++;
+    status_mess["timestamp"] = time(NULL);
 
-    // if (!this->platoonClient.sendMessage(truck_info.dump(), error_message)) {
-    //     std::cerr << "Error conneting to server: " << error_message << std::endl;
-    //     this->retry_times++;
-    //     return false;
-    // }
+    spdlog::info("Send truck status to LEADING truck.");
+    std::cout << this->status_mess.dump(3) << std::endl;
+
+    if (!this->platoonClient.sendMessage(status_mess.dump(), error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        this->retry_times++;
+        return false;
+    }
     this->retry_times = 0;
     return true;
 }
@@ -157,13 +164,13 @@ bool FollowingTruck::listenForLeading() {
     bool emergency = true;
 
     spdlog::info("Listening for LEADING Truck ... ");
-    // leading_rsp = json::parse(this->platoonClient.readMessage());
-    // std::cout << "Message from LEADING Truck : " << leading_rsp.dump() << std::endl;
+    leading_rsp = json::parse(this->platoonClient.readMessage());
+    std::cout << "Message from LEADING Truck : " << leading_rsp.dump() << std::endl;
 
-    // if (leading_rsp["cmd"] == "emergency") emergency = true;
+    if (leading_rsp["cmd"] == "emergency") emergency = true;
 
-    // return emergency;
-    return ((rand() % 10) == 0) ? true : false ; // [FIXME] Check if emergency happens
+    return emergency;
+    // return ((rand() % 10) == 0) ? true : false ; 
 }
 
 //
@@ -193,7 +200,6 @@ void FollowingTruck::updateCurrentStatus() {
     this->truck_info["contents"]["error_code"] = this->error_code;
 
     spdlog::info("Update truck status");
-    std::cout << this->truck_info.dump(3) << std::endl;
 }
 
 //
