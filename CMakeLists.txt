@@ -11,6 +11,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/build/bin)
 set(SOURCE_LEADING_TRUCK ${CMAKE_SOURCE_DIR}/src/main.cpp)
 set(SOURCE_FOLLOWING_TRUCK ${CMAKE_SOURCE_DIR}/src/following.cpp)
 
+# Add the ThreadPool as a library
+
 file(GLOB_RECURSE SOURCES 
     ${CMAKE_SOURCE_DIR}/src/*.cpp
     ${CMAKE_SOURCE_DIR}/src/*.c
@@ -19,6 +21,11 @@ file(GLOB_RECURSE SOURCES
 list(REMOVE_ITEM SOURCES ${SOURCE_LEADING_TRUCK} ${SOURCE_FOLLOWING_TRUCK})
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
+
+# # Add the ThreadPool as a library
+# add_library(ThreadPool STATIC ${CMAKE_SOURCE_DIR}/src/utils/thread_pool.cpp)
+
+# target_include_directories(ThreadPool PUBLIC ${CMAKE_SOURCE_DIR}/src/utils)
 
 # Add the dotenv.c file to the source files
 # set(DOTENV_SOURCE ${CMAKE_SOURCE_DIR}/src/libs/dotenv/dotenv.c)
@@ -30,17 +37,20 @@ add_executable(FollowingTruck ${SOURCE_FOLLOWING_TRUCK} ${SOURCES})
 find_package(Threads REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 target_link_libraries(LeadingTruck PRIVATE
     Threads::Threads 
     spdlog::spdlog
     nlohmann_json::nlohmann_json
+    OpenSSL::SSL
 )
 
 target_link_libraries(FollowingTruck PRIVATE
     Threads::Threads 
     spdlog::spdlog
     nlohmann_json::nlohmann_json
+    OpenSSL::SSL
 )
 
 #Compiler options

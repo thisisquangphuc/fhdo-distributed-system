@@ -1,0 +1,44 @@
+[
+{
+    "truck_id":"aaaa",
+    "cmd":"communicate", //auth,leave,join,communicate,emergency,obstacle
+    "contents": {
+        "location":{
+            "lat": 37.7749,
+            "lon": -122.4194
+        },
+        "distance":{
+            "front": 10,
+            "back": 10,
+            "lead": 10
+        },
+        "speed": 60,
+        "status": "normal", //running, stopped, emergency, error
+        "brake_force": 0, //0.0 -> 1.0
+        "error_code": "ER001"
+    },
+    "msg_id": "<uuid>",
+    "timestamp":52451245
+},
+
+
+{
+    "cmd":"auth",
+    "contents": {
+        "auth_key":"PHUC01QUYEN02ISSAC03DAO04"
+    },
+    "msg_id": "<uuid>",
+    "timestamp":52451245
+},
+
+{
+    "truck_id":"LEADING_001",
+    "cmd":"auth_ok",
+    "contents": {
+        "id":"TRUCK_4001"
+    },
+    "msg_id": "<uuid>",
+    "timestamp":52451245
+}
+
+]
