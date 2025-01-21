@@ -90,7 +90,7 @@ bool FollowingTruck::joiningPlatoon() {
     done_message["msg_id"] = this->msg_id++;
     done_message["timestamp"] = time(NULL);
 
-    std::cout << "Done joining " << done_message.dump(3) << std::endl;
+    std::cout << "Done joining " << done_message.dump() << std::endl;
     if (!this->platoonClient.sendMessage(done_message.dump(), error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
@@ -147,7 +147,7 @@ bool FollowingTruck::sendCurrentStatus() {
     status_mess["timestamp"] = time(NULL);
 
     spdlog::info("Send truck status to LEADING truck.");
-    std::cout << status_mess.dump(3) << std::endl;
+    std::cout << status_mess.dump() << std::endl;
 
     if (!this->platoonClient.sendMessage(status_mess.dump(), error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
