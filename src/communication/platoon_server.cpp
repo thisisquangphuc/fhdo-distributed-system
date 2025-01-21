@@ -54,18 +54,13 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
             string command = truckMessage.getCommand();
             spdlog::info("Command: {}", command);
 
-            // Example response
-            // std::string response = "{\"status\":\"ok\"}";
-
-            //Build response payload
-            // "truck_id":"LEADING_001",
-            // "cmd":"auth_ok",
-            // "contents": {
-            //     "id":"TRUCK_4001"
-            // },
             truckMessage.setTruckID("LEADING_001");
             truckMessage.setCommand("auth_ok");
             json contents = {{"id", "TRUCK_4001"}};
+
+
+            //Create a queue to handle the messages
+            
             std::string response = truckMessage.buildPayload(contents);
             // std::string response = truckMessage.serialize();
 

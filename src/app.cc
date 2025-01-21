@@ -20,9 +20,12 @@ void AppStateMachine::init() {
     // Logic for initialization
     // Generate pre-shared keys for number of trucks
     // store keys in a list
-    // vector<string> pre_shared_key = generate_pre_shared_key(num_trucks);
+    int num_trucks = env_get_int("NUM_TRUCKS", TOTAL_TRUCKS);
+    pre_shared_keys = generate_pre_shared_key(num_trucks);
     //print pre-shared keys to terminal with key map
-    // spdlog::info("Pre-shared key: {}", pre_shared_key);
+    for (int i = 0; i < num_trucks; i++) {
+        spdlog::info("Truck {} pre-shared key: {}", i, pre_shared_keys[i]);
+    }
     cout << "Truck is in INIT state." << endl;
     // Set current state to IDLE
     // app_state = IDLE;

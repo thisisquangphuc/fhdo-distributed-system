@@ -25,13 +25,16 @@ inline std::vector<std::string> generate_pre_shared_key(int num_trucks) {
     const char* session_key = env_get("SESSION_KEY", DEFAULT_SESSION_KEY); // Retrieve session key from environment
 
     for (int i = 0; i < num_trucks; ++i) {
-        std::ostringstream key_stream;
+       
         std::time_t current_time = std::time(nullptr); // Get current time
-        key_stream << session_key << "_" << current_time << "_" << i; // Create unique key
+        //concate session key and time and index
+        std::stringstream ss;
+        ss << session_key << current_time << i;
+        std::string key_stream = ss.str(); // Convert to string stream
         
         // Hash the key string
         unsigned char hash[SHA256_DIGEST_LENGTH];
-        SHA256(reinterpret_cast<const unsigned char*>(key_stream.str().c_str()), key_stream.str().length(), hash);
+        SHA256(reinterpret_cast<const unsigned char*>(key_stream.c_str()), key_stream.length(), hash);
 
         // Convert hash to hex string
         std::ostringstream hex_stream;

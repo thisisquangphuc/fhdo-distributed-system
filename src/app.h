@@ -32,56 +32,57 @@ typedef enum {
 } TruckState;
 
 class AppStateMachine {
-public:
-    // enum class State { INIT, IDLE, NORMAL_OPERATION, SPEED_UP, SLOW_DOWN, EMERGENCY_BRAKE, CONNECTION_LOST };
-    AppStateMachine();
+    private:
+        TruckState currentState;
+        vector<string> pre_shared_keys;
 
-    void init();
-    void idle();
-    void normalOperation();
-    void speedUp();
-    void slowDown();
-    void emergencyBrake();
-    void connectionLost();
+    public:
+        // enum class State { INIT, IDLE, NORMAL_OPERATION, SPEED_UP, SLOW_DOWN, EMERGENCY_BRAKE, CONNECTION_LOST };
+        AppStateMachine();
 
-    TruckState getCurrentState() const;
+        void init();
+        void idle();
+        void normalOperation();
+        void speedUp();
+        void slowDown();
+        void emergencyBrake();
+        void connectionLost();
 
-    void handleEvent(const TruckMessage& msg) {
-        cout << "Handle event: " << endl;
+        TruckState getCurrentState() const;
 
-        while (true)
-        { 
-            switch (getCurrentState()) {
-                case INIT:
-                    init();
-                    break;
-                case IDLE:
-                    idle();
-                    break;
-                case NORMAL_OPERATION:
-                    normalOperation();
-                    break;
-                case SPEED_UP:
-                    speedUp();
-                    break;
-                case SLOW_DOWN:
-                    slowDown();
-                    break;
-                case EMERGENCY_BRAKE:
-                    emergencyBrake();
-                    break;
-                case CONNECTION_LOST:
-                    connectionLost();
-                    break;
+        void handleEvent(const TruckMessage& msg) {
+            cout << "Handle event: " << endl;
+
+            while (true)
+            { 
+                switch (getCurrentState()) {
+                    case INIT:
+                        init();
+                        break;
+                    case IDLE:
+                        idle();
+                        break;
+                    case NORMAL_OPERATION:
+                        normalOperation();
+                        break;
+                    case SPEED_UP:
+                        speedUp();
+                        break;
+                    case SLOW_DOWN:
+                        slowDown();
+                        break;
+                    case EMERGENCY_BRAKE:
+                        emergencyBrake();
+                        break;
+                    case CONNECTION_LOST:
+                        connectionLost();
+                        break;
+                }
+                //sleep for 1 second
+                std::this_thread::sleep_for(std::chrono::seconds(1));
             }
-            //sleep for 1 second
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            
         }
-        
-    }
-
-private:
-    TruckState currentState;
 };
 
 void inline start_platoon_server(int port, std::string host_ip) {
