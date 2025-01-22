@@ -1,76 +1,66 @@
-%%writefile concurrent_tasks.cu
-#include <stdio.h>
+%%writefile concurrent.cu
 #include <cuda_runtime.h>
+#include <iostream>
 
+#define N 1
 
-// Kernel for receiveData
-__global__ void receiveData(int *data) {
-  //printf("test");
-    int receiveDistanceData = 0;
+__global__ void receiveData(float *data) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
-    for(int i=0; i<100; i++){
-        data[idx] = receiveDistanceData++;
-        printf("Distance is: %d\n", data[idx]);
-    }
+    data[idx]++;
+    printf("Distance: %f m\n", data[idx]);
+
 }
 
-// Kernel for monitorDistance
-__global__ void monitorDistance(int *data) {
+__global__ void monitorDistance(float *data) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    printf("Test");
-    if (data[idx] < 50) {
-        printf("Warning: Distance is less than 10\n");
-    } else{
+    if (data[idx] < 10) {
+        printf("Warning: Distance is less than 10 m\n");
+    } else if ((data[idx] >= 10) & (data[idx] <= 12)){
       printf("Safe\n");
+    } else{
+      printf("Warning: Distance is too far m\n");
     }
 }
 
 int main() {
-    int *d_data, *h_data;
-    size_t size = sizeof(int);
+    float *d_data1; //*d_data2;
+    float *h_data = new float[N];
 
-    // Allocate memory on the host
-    h_data = (int*)malloc(size);
+    for (int i = 0; i < N; ++i) {
+        h_data[i] = 0;
+    }
 
-    // Initialize vectors
-    h_data = 0;
+    cudaMalloc(&d_data1, N * sizeof(float));
+    //cudaMalloc(&d_data2, N * sizeof(float));
 
-    // Allocate memory on the device
-    cudaMalloc((void**)&d_data, size);
-
-    // Copy data to device
-    cudaMemcpy(d_data, h_data, size, cudaMemcpyHostToDevice);
-
-    // Create streams for concurrent execution
     cudaStream_t stream1, stream2;
     cudaStreamCreate(&stream1);
     cudaStreamCreate(&stream2);
 
-    // Launch kernels in different streams
-    int threads_per_block = 1;
-    int blocks_per_grid = 1;
+    cudaMemcpyAsync(d_data1, h_data, N * sizeof(float), cudaMemcpyHostToDevice, stream1);
+    //cudaMemcpyAsync(d_data2, h_data, N * sizeof(float), cudaMemcpyHostToDevice, stream2);
 
-    receiveData<<<blocks_per_grid, threads_per_block, 0, stream1>>>(d_data);
-    monitorDistance<<<blocks_per_grid, threads_per_block, 0, stream2>>>(d_data);
-    
+    int threadsPerBlock = 1;
+    int blocksPerGrid = 1;
+    for(int i=0; i<20; i++){
+      receiveData<<<blocksPerGrid, threadsPerBlock, 0, stream1>>>(d_data1);
+      monitorDistance<<<blocksPerGrid, threadsPerBlock, 0, stream2>>>(d_data1);
+    }
 
-    // Synchronize streams
+
+    cudaMemcpyAsync(h_data, d_data1, N * sizeof(float), cudaMemcpyDeviceToHost, stream1);
+    //cudaMemcpyAsync(h_data, d_data2, N * sizeof(float), cudaMemcpyDeviceToHost, stream2);
+
     cudaStreamSynchronize(stream1);
     cudaStreamSynchronize(stream2);
 
-    // Copy results back to host
-    //cudaMemcpy(h_c_add, d_c_add, size, cudaMemcpyDeviceToHost);
-    
 
-    
 
-    // Free memory
-    cudaFree(d_data);
-    free(h_data);
-
+    cudaFree(d_data1);
+    //cudaFree(d_data2);
     cudaStreamDestroy(stream1);
     cudaStreamDestroy(stream2);
+    delete[] h_data;
 
     return 0;
 }
