@@ -22,8 +22,6 @@ bool FollowingTruck::askToJoinPlatoon() {
     
     auth_req.setCommand("auth");
     auth_req.setAuthenKey(auth_token);  
-    auth_req.setMessageID(auth_req.generateUUID());
-    auth_req.setTimestamp(auth_req.generateDateTime()); // [FIXME]
 
     send_message = auth_req.buildPayload();
     spdlog::info("[{}]: {}", __func__, send_message);               
@@ -77,8 +75,6 @@ bool FollowingTruck::joiningPlatoon() {
     spdlog::info("[{}]: Joining from the end of platoon system.", __func__);  
     done_message.setTruckID(this->truck_id);
     done_message.setCommand("join");
-    done_message.setMessageID(done_message.generateUUID());
-    done_message.setTimestamp(done_message.generateDateTime()); // [FIXME]
 
     send_message = done_message.buildPayload();
     spdlog::info("[{}]: Done joining - {}", __func__, send_message);
@@ -105,8 +101,6 @@ bool FollowingTruck::leavingPlatoon() {
     TruckMessage leave_req = this->truck_message;
     
     leave_req.setCommand("leave");
-    leave_req.setMessageID(leave_req.generateUUID());
-    leave_req.setTimestamp(leave_req.generateDateTime());
 
     spdlog::info("[{}]: Asking to leave the platoon ... - {}", __func__, this->truck_id, leave_req.serialize());
     if (!this->platoonClient.sendMessage(leave_req.buildPayload(), error_message)) {
@@ -135,8 +129,6 @@ bool FollowingTruck::sendCurrentStatus() {
     this->updateCurrentStatus();
 
     this->truck_message.setCommand("status");
-    this->truck_message.setMessageID(this->truck_message.generateUUID());
-    this->truck_message.setTimestamp(this->truck_message.generateDateTime());
 
     send_message = this->truck_message.buildPayload();
     spdlog::info("[{}]: {} - Send truck status to LEADING truck - {} ", 

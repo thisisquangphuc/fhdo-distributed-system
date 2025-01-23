@@ -51,7 +51,7 @@ void* following_fsm(void* arg);
 void* simulate_request(void* arg);
 void* send_current_status(void* arg);
 void* check_lead_message(void* arg);
-void* request_to_lead(void* arg);
+//void* request_to_lead(void* arg);
 void* emergency_brake(void* arg);
 void load_environment(std::string env_file);
 
@@ -249,15 +249,15 @@ void* check_lead_message(void* arg) {
     pthread_exit(NULL); 
 }
 
+////
+//void* request_to_lead(void* arg) { 
+//    pthread_detach(pthread_self());
 //
-void* request_to_lead(void* arg) { 
-    pthread_detach(pthread_self());
-
-    spdlog::debug("Send request to LEADING");
-    while (get_current_state() == NORMAL_OPERATION);
-
-    pthread_exit(NULL);
-}
+//    spdlog::debug("Send request to LEADING");
+//    while (get_current_state() == NORMAL_OPERATION);
+//
+//    pthread_exit(NULL);
+//}
 
 //
 void* emergency_brake(void* arg) {
@@ -283,5 +283,5 @@ void load_environment(std::string env_file) {
         env_file_string = SERVICE_ENV_FILE_DEFAULT;
     env_init(env_file_string.c_str());
 
-    std::cout << "Project Name: " << env_get("PROJECT_NAME", "PLATOON-TRUCKS-PROJECT") << std::endl;
+    std::cout << "Project Name: " << env_get("PROJECT_NAME", "Unknown") << std::endl;
 }
