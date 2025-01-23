@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h> 
-#include <iostream>
 #include <filesystem>
-#include <unistd.h>
 #include <pthread.h> 
 #include "communication/platoon_client.h"
 #include "control/following_truck.h"
@@ -28,6 +26,10 @@ TruckState get_current_state() {
     return current_state;
 }
 
+TruckState get_next_state() {
+    return next_state;
+}
+
 //
 typedef enum {
     NONE,
@@ -49,7 +51,7 @@ void* following_fsm(void* arg);
 void* simulate_request(void* arg);
 void* send_current_status(void* arg);
 void* check_lead_message(void* arg);
-void* request_to_lead(void* arg);
+//void* request_to_lead(void* arg);
 void* emergency_brake(void* arg);
 void load_environment(std::string env_file);
 
@@ -68,11 +70,11 @@ int main()
     pthread_create(&thread_fsm, NULL, &following_fsm, NULL);
     pthread_create(&thread_req, NULL, &simulate_request, NULL);
 
-    spdlog::debug("Wait for main control threads EXIT");
+//    spdlog::debug("Wait for main control threads EXIT");
     pthread_join(thread_fsm, NULL); 
-    spdlog::debug("FSM thread EXIT");
+//    spdlog::debug("FSM thread EXIT");
     pthread_join(thread_req, NULL); 
-    spdlog::debug("REQ thread EXIT");
+//    spdlog::debug("REQ thread EXIT");
     
     return 0;
 }
@@ -93,6 +95,8 @@ void* following_fsm(void* arg) {
                     if (followingTruck.askToJoinPlatoon()) {
                         spdlog::info("Authenticate successfully.");
                         next_state = JOINING;
+                    } else if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+                        spdlog::info("Failed to authenticate truck.");
                     }
                 } 
                 break;
@@ -121,7 +125,7 @@ void* following_fsm(void* arg) {
 
                 if (leadingNoti == BRAKE) {
                     spdlog::info("Receive emergency brake from LEADING truck.");
-                    followingTruck.startBraking();
+//                    followingTruck.startBraking();
                     pthread_create(&thread_emg_brake, NULL, &emergency_brake, NULL);
                     next_state = EMERGENCY_BRAKE;
                 }
@@ -185,13 +189,14 @@ void* simulate_request(void* arg) {
     pthread_detach(pthread_self()); 
 
     int input;
+    int period = env_get_int("SIMULATION_REQ_PERIOD", 1);
     while (true) {
         std::cout << "Request to server (0->Exit Program, 1->Join Platoon, 2->Leave Platoon): "; 
         std::cin >> input;
         if (input == 0) break;
         request = (TruckRequest)input;
         std::cout << "Request value: " << request << std::endl;
-        sleep(1);
+        sleep(period);
         request = NONE;
     }
 
@@ -203,7 +208,12 @@ void* send_current_status(void* arg) {
     pthread_detach(pthread_self()); 
 
     spdlog::debug("Send current status to LEADING");
-    while (get_current_state() == NORMAL_OPERATION) {
+    // wait to change state
+    while (get_current_state() != NORMAL_OPERATION);
+    //
+    int period = env_get_int("SEND_STATUS_PERIOD", 1);
+    while (true) {
+        if (get_current_state() == IDLE) break;
         if (!followingTruck.sendCurrentStatus()) {
             spdlog::warn("Failed to send current status to server.");
         }
@@ -211,8 +221,9 @@ void* send_current_status(void* arg) {
             spdlog::error("Connection lost with server.");
         }
         // send every 2 seconds
-        sleep(2); 
+        sleep(period); 
     }
+    spdlog::debug("Exit send current status.");
 
     pthread_exit(NULL); 
 }
@@ -222,31 +233,40 @@ void* check_lead_message(void* arg) {
     pthread_detach(pthread_self()); 
 
     spdlog::debug("Check LEADING notification");
-    while (get_current_state() == NORMAL_OPERATION) {
+    // wait to change state
+    while (get_current_state() != NORMAL_OPERATION);
+    //
+    int period = env_get_int("LISTEN_LEADING_PERIOD", 1);
+    while (true) {
+        if (get_current_state() == IDLE) break;
         if (followingTruck.listenForLeading()) {
             leadingNoti = BRAKE;
         }
-        sleep(1);
+        sleep(period);
     } 
+    spdlog::debug("Exit check notification.");
 
     pthread_exit(NULL); 
 }
 
+////
+//void* request_to_lead(void* arg) { 
+//    pthread_detach(pthread_self());
 //
-void* request_to_lead(void* arg) { 
-    pthread_detach(pthread_self());
-
-    spdlog::debug("Send request to LEADING");
-    while (get_current_state() == NORMAL_OPERATION);
-
-    pthread_exit(NULL);
-}
+//    spdlog::debug("Send request to LEADING");
+//    while (get_current_state() == NORMAL_OPERATION);
+//
+//    pthread_exit(NULL);
+//}
 
 //
 void* emergency_brake(void* arg) {
     pthread_detach(pthread_self()); 
 
     spdlog::debug("Emergency Brake");
+    // wait to change state
+    while (get_current_state() != EMERGENCY_BRAKE);
+    //
     while (get_current_state() == EMERGENCY_BRAKE) { 
         followingTruck.emergencyBrake();
         sleep(1);

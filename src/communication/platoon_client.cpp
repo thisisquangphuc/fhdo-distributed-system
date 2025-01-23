@@ -2,6 +2,7 @@
 #include <cstring>
 #include <iostream>
 #include <sys/socket.h>
+#include <sys/ioctl.h> 
 #include <unistd.h>
 #include <arpa/inet.h>
 
@@ -74,11 +75,12 @@ bool PlatoonClient::sendMessage(std::string mess, std::string &error_message) {
 std::string PlatoonClient::receiveMessage() {
     char buffer[1024] = {0};
 
-    recv(clientSocket, buffer, sizeof(buffer)-1, 0);
-    printf("%s\n", buffer);
+    int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+    printf("[%s]-%d %s\n", __func__, bytesReceived, buffer);
 
     std::string receivedMessage(buffer);
-    return receivedMessage;
+
+    return (bytesReceived > 0) ? receivedMessage : NULL;
 }
 
 //

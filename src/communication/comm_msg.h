@@ -101,6 +101,7 @@ class TruckMessage {
         void setErrorCode(const std::string& errorCode) { outgoingPayload["contents"]["error_code"] = errorCode; }
         void setMessageID(const std::string& msgID) { outgoingPayload["msg_id"] = msgID; }
         void setTimestamp(const std::string& timestamp) { outgoingPayload["timestamp"] = timestamp; }
+        void setAuthenKey(const std::string& authKey) { outgoingPayload["contents"]["auth_key"] = authKey; }
         // void setTruckID(const std::string& id) { this->truck_id = id; }
 
         // Build payload from outgoing payload with defaults for unset fields
