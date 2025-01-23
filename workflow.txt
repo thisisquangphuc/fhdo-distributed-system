@@ -7,6 +7,8 @@
 
 - Leading -> update trucks info 
 
+- LEading -> 
+
 1.5 Normal operation 
 - Send msg (info), period T t(s) 
 - Check EMG condition via TCP/UDP 

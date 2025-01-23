@@ -3,8 +3,9 @@
 #include <cstring>
 #include <iostream>
 #include <unistd.h>
-#include "communication/comm_msg.h"
-#include "utils/logger.h"
+
+#include "control/trucks_manager.h"
+#include "control/event_manager.h"
 
 // Constructor
 PlatoonServer::PlatoonServer(int port) : serverSocket(-1), port(port) {}
@@ -19,6 +20,7 @@ PlatoonServer::~PlatoonServer() {
 void PlatoonServer::handleTruckSocket(int clientSocket) {
     char buffer[1024] = {0};
     bool isAuthenticated = false;
+    string truck_id = "";
     while (true) {
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
         if (bytesReceived <= 0) {
@@ -43,43 +45,62 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
                 if (authenticateTruck(truckMessage.getAuthenKey(), session_key)) {
                     spdlog::info("Authentication successful.");
                     isAuthenticated = true;
+
+                    // Generate truck ID
+                    truck_id = generateTruckID();
+                    // Add truck id to list
+                    TruckManager& truckManager = TruckManager::getInstance();
+                    truckManager.addTruck(truck_id, clientSocket);
+
+                    truckMessage.setTruckID("LEADING_001");
+                    truckMessage.setCommand("auth_ok");
+                    json contents = {{"id", truck_id}};
+
+                    std::string response = truckMessage.buildPayload(contents);
+                    send(clientSocket, response.c_str(), response.size(), 0);
+                    continue;
+
                 } else {
                     spdlog::error("Authentication failed.");
+                    // send error
+                    std::string rsp = truckMessage.buildPayload({{"error_code", "auth_failed"}});
+                    send(clientSocket, rsp.c_str(), rsp.size(), 0);
                     continue;
                 } 
             }
             // Handle message
             spdlog::info("Truck message: {}", truckMessage.serialize());
-            // Get command
-            string command = truckMessage.getCommand();
-            spdlog::info("Command: {}", command);
-
-            truckMessage.setTruckID("LEADING_001");
-            truckMessage.setCommand("auth_ok");
-            json contents = {{"id", "TRUCK_4001"}};
-
-
-            //Create a queue to handle the messages
-            
-            std::string response = truckMessage.buildPayload(contents);
+            string cmd = truckMessage.getCommand();
+            if (cmd == "emergency" || cmd == "obstacle") {
+                //high priority
+                emergencyQueue.enqueueCommand(message);
+            } else {
+                //low priority
+                regularQueue.enqueueCommand(message);
+            }
             // std::string response = truckMessage.serialize();
-
-            send(clientSocket, response.c_str(), response.size(), 0);
+            // send(clientSocket, response.c_str(), response.size(), 0);
         }
         catch (const nlohmann::json::exception& e)
         {
             std::cerr << "Error parsing JSON: " << e.what() << std::endl;
+            std::string response = R"({"error_code": "message_parse_error"})";
+            send(clientSocket, response.c_str(), response.size(), 0);
             continue;
         }
         catch(const std::exception& e)
         {
             std::cerr << "Error handling truck message: " << e.what() << std::endl;
+            std::string response = R"({"error_code": "message_parse_error"})";
+            send(clientSocket, response.c_str(), response.size(), 0);
             continue;
         } 
 
     }
     close(clientSocket);
     std::cout << "Finished handling truck.\n";
+    TruckManager& truckManager = TruckManager::getInstance();
+    truckManager.removeTruck(truck_id);
 }
 
 // Initialize the server socket

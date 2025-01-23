@@ -22,9 +22,6 @@ list(REMOVE_ITEM SOURCES ${SOURCE_LEADING_TRUCK} ${SOURCE_FOLLOWING_TRUCK})
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 
-# # Add the ThreadPool as a library
-# add_library(ThreadPool STATIC ${CMAKE_SOURCE_DIR}/src/utils/thread_pool.cpp)
-
 # target_include_directories(ThreadPool PUBLIC ${CMAKE_SOURCE_DIR}/src/utils)
 
 # Add the dotenv.c file to the source files

@@ -18,70 +18,56 @@
 #include "utils/logger.h"
 #include "communication/comm_msg.h"
 #include "utils/keygen.h"
+#include "control/monitor.h"
 
 using namespace std;
 
-typedef enum {
-    INIT,
-    IDLE,
-    NORMAL_OPERATION,
-    SPEED_UP,
-    SLOW_DOWN,
-    EMERGENCY_BRAKE,
-    CONNECTION_LOST
-} TruckState;
-
 class AppStateMachine {
     private:
-        TruckState currentState;
-        vector<string> pre_shared_keys;
+        enum class State { INIT, IDLE, NORMAL_OPERATION, EMERGENCY, CONNECTION_LOST, INVALID_TASKS };
+        State currentState;
+        vector<std::string> pre_shared_keys;
 
     public:
-        // enum class State { INIT, IDLE, NORMAL_OPERATION, SPEED_UP, SLOW_DOWN, EMERGENCY_BRAKE, CONNECTION_LOST };
-        AppStateMachine();
+        AppStateMachine() : currentState(State::INIT) {}
 
         void init();
         void idle();
         void normalOperation();
-        void speedUp();
-        void slowDown();
         void emergencyBrake();
         void connectionLost();
+        void handleInvalidTasks();  
 
-        TruckState getCurrentState() const;
+        State getCurrentState() { return currentState; }
 
-        void handleEvent(const TruckMessage& msg) {
-            cout << "Handle event: " << endl;
-
+        void handleEvent() {
             while (true)
             { 
                 switch (getCurrentState()) {
-                    case INIT:
+                    case State::INIT:
                         init();
                         break;
-                    case IDLE:
+                    case State::IDLE:
                         idle();
                         break;
-                    case NORMAL_OPERATION:
+                    case State::NORMAL_OPERATION:
                         normalOperation();
                         break;
-                    case SPEED_UP:
-                        speedUp();
-                        break;
-                    case SLOW_DOWN:
-                        slowDown();
-                        break;
-                    case EMERGENCY_BRAKE:
+                    case State::EMERGENCY:
                         emergencyBrake();
                         break;
-                    case CONNECTION_LOST:
+                    case State::CONNECTION_LOST:
                         connectionLost();
                         break;
+                    case State::INVALID_TASKS:
+                        handleInvalidTasks();
+                        break;
+                    default:
+                        break;
                 }
-                //sleep for 1 second
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+                //sleep for 100 milliseconds
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-            
         }
 };
 
@@ -110,19 +96,10 @@ inline int tcp_init() {
     int num_trucks = env_get_int("NUM_TRUCKS", TOTAL_TRUCKS);
 
     std::cout << "Starting server..." << std::endl;
-    // PlatoonServer server(port);
-    // server.setPort(port);
-    // server.setIP(host_ip);
-    // string error_message;
-    // if (!server.startServer(error_message)) {
-    //     std::cerr << "Error starting server: " << error_message << std::endl;
-    // }
-    // std::thread serverThread(&PlatoonServer::start, &server);
 
     //Create thread
     std::thread socket_server(start_platoon_server, port, host_ip);
     socket_server.detach();
-    // serverThread.detach();
 
     return 0;
 }
