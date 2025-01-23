@@ -62,7 +62,7 @@ int main()
     init_logger();
     
     //load evironment
-    load_environment(std::filesystem::current_path().u8string() + "/.env");
+    load_environment(std::filesystem::path(std::filesystem::current_path()).parent_path().u8string() + "/src/.env");
 
     pthread_t thread_fsm;
     pthread_t thread_req;
@@ -276,7 +276,6 @@ void* emergency_brake(void* arg) {
 
 //
 void load_environment(std::string env_file) {
-
     std::string env_file_string = env_file;
 
     if (env_file_string.empty())
