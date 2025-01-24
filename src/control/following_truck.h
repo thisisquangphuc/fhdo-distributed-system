@@ -24,6 +24,7 @@ class FollowingTruck {
         bool leavingPlatoon();
         bool sendCurrentStatus();
         std::string listenForLeading();
+        std::string listenForBroadcast();
         void emergencyBrake();
 //        void startBraking();
         int getRetryTimes();

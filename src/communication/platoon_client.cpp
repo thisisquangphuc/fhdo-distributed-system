@@ -7,12 +7,13 @@
 #include <arpa/inet.h>
 
 // Constructor
-PlatoonClient::PlatoonClient() : clientSocket(-1) {}
+PlatoonClient::PlatoonClient() : clientSocket(-1), UDPSocket(-1) {}
 
 // Destructor
 PlatoonClient::~PlatoonClient() {
     if (clientSocket >= 0) {
         close(clientSocket);
+        close(UDPSocket);
     }
 }
 
@@ -22,7 +23,6 @@ bool PlatoonClient::initSocketConnection(int port, std::string host_ip, std::str
     clientSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     // specifying address
-    sockaddr_in serverAddress;
     serverAddress.sin_family = AF_INET;
     serverAddress.sin_port = htons(port);
     serverAddress.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
@@ -46,14 +46,33 @@ bool PlatoonClient::initSocketConnection(int port, std::string host_ip, std::str
     return true;
 }
 
+// Initialize the UDP connection with server
+bool PlatoonClient::initUDPConnection(int port, std::string host_ip, std::string &error_message) {
+    const char *hello = "Hello from following truck.";
+
+    // creating socket
+    UDPSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (UDPSocket < 0) {
+        error_message = "Failed to create socket.";
+        return false;
+    }
+    memset(&serverAddress, 0, sizeof(serverAddress));
+
+    // specifying address
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(port);
+    serverAddress.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
+    
+    sendto(UDPSocket, (const char *)hello, strlen(hello), 
+        MSG_CONFIRM, (const struct sockaddr *) &serverAddress, sizeof(serverAddress)); 
+
+    error_message.clear();
+    return true;
+}
+
 // Start connecting to the server
 bool PlatoonClient::startClient(int port, std::string host_ip, std::string &error_message) {
     return initSocketConnection(port, host_ip, error_message);
-}
-
-//
-void PlatoonClient::setAuthToken(std::string key) {
-    authToken = key;
 }
 
 // Close socket connection with server
@@ -91,11 +110,13 @@ std::string PlatoonClient::receiveMessage() {
 }
 
 //
-std::string PlatoonClient::readMessage() {
+std::string PlatoonClient::receiveUDPMessage() {
+    int n;
+    socklen_t len;
     char buffer[1024] = {0};
 
-    read(clientSocket, buffer, 1024 - 1);
-    printf("%s\n", buffer);
+    n = recvfrom(UDPSocket, (char*)buffer, 1024, MSG_WAITALL, (struct sockaddr *) &serverAddress, &len);;
+    buffer[n] = '\0';
     
     std::string receivedMessage(buffer);
     return receivedMessage;

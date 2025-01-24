@@ -39,6 +39,12 @@ bool FollowingTruck::askToJoinPlatoon() {
         return false;
     }
 
+    if (!this->platoonClient.initUDPConnection(this->port, this->host_ip, error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        this->retry_times++;
+        return false;
+    }
+
     if (!this->platoonClient.sendMessage(send_message, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
@@ -196,6 +202,38 @@ std::string FollowingTruck::listenForLeading() {
     if (!leading_rsp.empty()) {
         json leading_mess = json::parse(leading_rsp);
         spdlog::debug("[{}]: Message from LEADING Truck: {} ", __func__, leading_mess.dump());
+        
+        std::string leading_cmd = leading_mess["cmd"];
+
+        if (leading_cmd == "emergency") {
+            this->truck_status = "emergency";
+            this->brake_force = (double)leading_mess["contents"].value("brake_force", this->brake_force);
+            this->ref_speed = (double)leading_mess["contents"].value("speed", this->truck_speed);
+        } else if (leading_cmd == "slow_down") {
+            this->brake_force = (double)leading_mess["contents"].value("brake_force", this->brake_force);
+            this->ref_speed = (double)leading_mess["contents"].value("speed", this->truck_speed);
+        } else if (leading_cmd == "speed_up") {
+            this->truck_speed += TRUCK_SPEED_UP_SPEED;
+            this->ref_speed = (double)leading_mess["contents"].value("speed", this->truck_speed);
+        } else {
+            leading_cmd = "";
+        }
+        return leading_cmd;
+    }
+    return "";
+}
+
+// 
+std::string FollowingTruck::listenForBroadcast() {
+    std::string leading_rsp;
+    std::string error_message;
+
+    spdlog::debug("[{}]: {} - Listening for Broadcast ... ", __func__, this->truck_id);
+    leading_rsp = this->platoonClient.receiveUDPMessage();
+
+    if (!leading_rsp.empty()) {
+        json leading_mess = json::parse(leading_rsp);
+        spdlog::debug("[{}]: Broadcast Message: {} ", __func__, leading_mess.dump());
         
         std::string leading_cmd = leading_mess["cmd"];
 

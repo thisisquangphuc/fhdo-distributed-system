@@ -53,6 +53,7 @@ void* following_fsm(void* arg);
 void* simulate_request(void* arg);
 void* send_current_status(void* arg);
 void* check_lead_message(void* arg);
+void* check_broadcast_message(void* arg);
 //void* request_to_lead(void* arg);
 void* emergency_brake(void* arg);
 void load_environment(std::string env_file);
@@ -87,6 +88,7 @@ void* following_fsm(void* arg) {
 
     pthread_t thread_send_stats;
     pthread_t thread_check_lead;
+    pthread_t thread_check_broadcast;
     // pthread_t thread_req_lead;
     pthread_t thread_emg_brake;
 
@@ -111,6 +113,7 @@ void* following_fsm(void* arg) {
 
                     pthread_create(&thread_send_stats, NULL, &send_current_status, NULL);
                     pthread_create(&thread_check_lead, NULL, &check_lead_message, NULL);
+                    pthread_create(&thread_check_broadcast, NULL, &check_broadcast_message, NULL);
                     // pthread_create(&thread_req_lead, NULL, &request_to_lead, NULL);
 
                     next_state = NORMAL_OPERATION;
@@ -173,6 +176,7 @@ void* following_fsm(void* arg) {
 
                 pthread_join(thread_send_stats, NULL); 
                 pthread_join(thread_check_lead, NULL); 
+                pthread_join(thread_check_broadcast, NULL); 
                 // pthread_join(thread_req_lead, NULL); 
 
                 spdlog::debug("Threads EXIT");
@@ -253,6 +257,31 @@ void* check_lead_message(void* arg) {
     while (true) {
         if (get_current_state() == IDLE) break;
         std::string leading_mess = followingTruck.listenForLeading();
+
+        if (leading_mess == "emergency")      leadingNoti = BRAKING;
+        else if (leading_mess == "slow_down")  leadingNoti = SLOWING;
+        else if (leading_mess == "speed_up")  leadingNoti = SPEEDING;
+        else                                  leadingNoti = NORMAL;
+
+        sleep(period);
+    } 
+    spdlog::debug("Exit check notification.");
+
+    pthread_exit(NULL); 
+}
+
+//
+void* check_broadcast_message(void* arg) {
+    pthread_detach(pthread_self()); 
+
+    spdlog::debug("Check BROADCAST notification");
+    // wait to change state
+    while (get_current_state() != NORMAL_OPERATION);
+    //
+    int period = env_get_int("LISTEN_LEADING_PERIOD", 1);
+    while (true) {
+        if (get_current_state() == IDLE) break;
+        std::string leading_mess = followingTruck.listenForBroadcast();
 
         if (leading_mess == "emergency")      leadingNoti = BRAKING;
         else if (leading_mess == "slow_down")  leadingNoti = SLOWING;
