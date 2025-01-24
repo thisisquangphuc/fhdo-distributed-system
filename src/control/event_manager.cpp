@@ -13,6 +13,7 @@
 #include <condition_variable>
 #include <string>
 #include <functional>
+#include "app.h"
 
 // StateMachine stateMachine
 void processCommands(MsgQueue& queue, TruckEventFSM& stateMachine) {
@@ -57,7 +58,11 @@ void TruckEventFSM::handleJoin(const TruckMessage& msg){
         // Send synchronization data such as location and speed, etc.
         PlatoonDataManager& platoon_data = PlatoonDataManager::getInstance();
         json data = platoon_data.getPlatoonDataJSON();
-        PlatoonServer::sendResponse(cli_socket, data);
+
+        // send command "join_accepted" and data to client
+        TruckMessage rspMsg;
+        rspMsg.setCommand("join_accepted");
+        PlatoonServer::sendResponse(cli_socket, rspMsg.buildPayload(data));
 
     } catch (const std::invalid_argument& e) {
         std::cerr << e.what() << '\n';
@@ -86,6 +91,24 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
             //Remove the leaving truck from the platoon
             spdlog::info("Truck {} leave done, remove from platoon", id);
             truckManager.removeTruck(id);
+            
+            // Send "sync" command to all trucks
+            PlatoonDataManager& platoon_data = PlatoonDataManager::getInstance();
+            // increase speed
+            platoon_data.updateTruckField(&PlatoonData::speed, platoon_data.getPlatoonData().speed + 15);
+            // decrease brake force
+            platoon_data.updateTruckField(&PlatoonData::brakeForce, platoon_data.getPlatoonData().brakeForce - 0.2);
+
+            json data = platoon_data.getPlatoonDataJSON();
+            TruckMessage rspMsg;
+            rspMsg.setCommand("sync");
+
+            vector<pair<string, int>> allTrucks = truckManager.getTrucks();
+            for (const auto& truck : allTrucks) {
+                cli_socket = truckManager.getSocketId(truck.first);
+                PlatoonServer::sendResponse(cli_socket, rspMsg.buildPayload(data));
+            }
+
             return;
         }
         //Check if there are any emergency signal
@@ -117,9 +140,9 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
 
         json data = platoon_data.getPlatoonDataJSON();
 
-        TruckMessage msg;
-        msg.setCommand("slow_down");
-        string payload = msg.buildPayload(data);
+        TruckMessage rspMsg;
+        rspMsg.setCommand("slow_down");
+        string payload = rspMsg.buildPayload(data);
         for (const auto& truck : allTrucks) {
             if (truck.first == id) {
                 // skip the leaving truck
@@ -130,8 +153,8 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
         }
 
         //Response to leaving truck
-        msg.setCommand("leave_start");
-        payload = msg.buildPayload(data);
+        rspMsg.setCommand("leave_start");
+        payload = rspMsg.buildPayload(data);
         PlatoonServer::sendResponse(leaveSocket, payload);
 
     } catch (const std::invalid_argument& e) {
@@ -146,14 +169,58 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
     }
 }
 void TruckEventFSM::handleCommunicate(const TruckMessage& msg){
-    //
+    // Proces status messages from following trucks
+    if (msg.getCommand() == "status") {
+        // Process status message
+        //[TODO] Get distances and speeds from the message and calculate the new status based on it
+        // Get front and back distances in distance field of the message along with "front" and "back"
+
+        double frontDistance = msg.getFrontDistance();
+        double backDistance = msg.getBackDistance();
+
+        // if these distances are in range of dangerous distances, set the status to "danger"
+        //get safe distance from env
+        double safeDistance = env_get_double("SAFE_DISTANCE", TRUCK_SAFE_DISTANCE);
+        if (frontDistance < (safeDistance + 5) || backDistance < (safeDistance + 5)) {
+            // Enable Emergency signal and change the state to "emergency"
+            // setEmergencyEnabled(true);
+
+            // Switch to emergency state
+            AppStateMachine& appTasks = getAppTasks();
+            appTasks.switchToEmergency();
+        } 
+        //Further processing
+
+    }
     
 }
 void TruckEventFSM::handleEmergency(const TruckMessage& msg){
-    // 
+    // Get the emergency message, parse it and send it to all trucks
+    // Decison making logic for emergency response
+
 }
 
 bool TruckEventFSM::Auth(const TruckMessage& msg, string truckID) {
-    // bool Auth(const TruckMessage& msg, string truckID);
+    // [DONE] Handled in PlatoonServer
     return true;
+}
+
+void TruckEventFSM::handleExternal(const TruckMessage& msg){
+    // Get command
+    string command = msg.getCommand();
+    
+    if (command == "test_emergency") {
+        // Switch to emergency state
+        AppStateMachine& appTasks = getAppTasks();
+        appTasks.switchToEmergency();
+        // appTasks.switchToEmergency();
+    } else if (command == "test_normal") {
+        // Switch to normal state
+        AppStateMachine& appTasks = getAppTasks();
+        appTasks.switchToNormal();
+    } else {
+        // Invalid command
+        spdlog::error("Invalid test command: {}", command);
+    }
+
 }

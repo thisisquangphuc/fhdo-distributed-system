@@ -39,8 +39,7 @@ class TruckMessage {
         TruckMessage(std::string payload) {
             // parse 
             if (!parsePayload(payload)) {
-                // throw error
-                throw std::runtime_error("Trucks Message:JSON Parse Error");
+                throw std::invalid_argument("Invalid payload");
             }
             truck_id = getTruckID();
         }
@@ -116,8 +115,8 @@ class TruckMessage {
         // Build payload from outgoing payload with contents in json
         std::string buildPayload(const nlohmann::json& contents) const {
             nlohmann::json fullPayload = defaultPayload();
-            // fullPayload["truck_id"] = truck_id;
             fullPayload.merge_patch(outgoingPayload);
+            fullPayload["truck_id"] = "LEADING_001";
             fullPayload["contents"] = contents;
             return fullPayload.dump();
         }

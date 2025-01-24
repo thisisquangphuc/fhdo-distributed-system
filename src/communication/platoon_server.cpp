@@ -58,6 +58,7 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
 
                     std::string response = truckMessage.buildPayload(contents);
                     send(clientSocket, response.c_str(), response.size(), 0);
+
                     continue;
 
                 } else {
@@ -84,12 +85,15 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
         catch (const nlohmann::json::exception& e)
         {
             std::cerr << "Error parsing JSON: " << e.what() << std::endl;
-            std::string response = R"({"error_code": "message_parse_error"})";
+            std::string response = R"({"error_code": "message_format_error"})";
             send(clientSocket, response.c_str(), response.size(), 0);
             continue;
-        }
-        catch(const std::exception& e)
-        {
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "Error handling truck message: " << e.what() << std::endl;
+            std::string response = R"({"error_code": "message_format_error"})";
+            send(clientSocket, response.c_str(), response.size(), 0);
+            continue;
+        } catch(const std::exception& e){
             std::cerr << "Error handling truck message: " << e.what() << std::endl;
             std::string response = R"({"error_code": "message_parse_error"})";
             send(clientSocket, response.c_str(), response.size(), 0);
@@ -207,4 +211,38 @@ void PlatoonServer::stop() {
     isRunning = false;
     close(serverSocket);
     std::cout << "Server stopped.\n";
+}
+
+
+/* UDP */
+UdpBroadcast::UdpBroadcast(int port) : port(port) {
+    // Create UDP socket
+    socketFd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (socketFd < 0) {
+        throw std::runtime_error("Failed to create UDP socket.");
+    }
+
+    int broadcastEnable = 1;
+    if (setsockopt(socketFd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0) {
+        throw std::runtime_error("Failed to enable broadcast on socket.");
+    }
+
+    // Configure broadcast address
+    memset(&broadcastAddr, 0, sizeof(broadcastAddr));
+    broadcastAddr.sin_family = AF_INET;
+    broadcastAddr.sin_port = htons(port);
+    broadcastAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+}
+
+UdpBroadcast::~UdpBroadcast() {
+    close(socketFd);
+}
+
+void UdpBroadcast::broadcastMessage(const std::string& message) {
+    if (sendto(socketFd, message.c_str(), message.size(), 0,
+               (struct sockaddr*)&broadcastAddr, sizeof(broadcastAddr)) < 0) {
+        std::cerr << "Failed to send UDP broadcast." << std::endl;
+    } else {
+        std::cout << "Broadcasted message: " << message << std::endl;
+    }
 }

@@ -36,8 +36,8 @@ void PlatoonDataManager::init() {
         platoonData.speed = std::stod(env_get("LEADING_SPEED",0));
         platoonData.brakeForce = std::stod(env_get("LEADING_BRAKE_FORCE",0));
         platoonData.acceleration = std::stod(env_get("LEADING_ACCELERATION",0));
-        platoonData.gearPosition = std::stoi(env_get("LEADING_GEAR",0));
-        platoonData.fuelLevel = std::stod(env_get("LEADING_FUEL",0));
+        platoonData.gearPosition = env_get_int("LEADING_GEAR",0);
+        // platoonData.fuelLevel = std::stod(env_get("LEADING_FUEL",0));
         platoonData.operationTime = TruckMessage::generateTimestamp();
         // platoonData.obstacleInfo = env_get("LEADING_OBSTACLE",0);
         // platoonData.trafficSignal = env_get("LEADING_SIGNAL",0);

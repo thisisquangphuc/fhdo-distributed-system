@@ -3,7 +3,9 @@
 - Joining msg (....)
 - LEading cal -> Ok -> sync(gps,xxx) 
                 -> slow down, new truck is joining 
+
 - Following -> distance_cal() -> sysnc ok -> Leading 
+                -> status -> Leading.
 
 - Leading -> update trucks info 
 
