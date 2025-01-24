@@ -1,20 +1,20 @@
 [
 {
     "truck_id":"aaaa",
-    "cmd":"communicate", //auth,leave,join,communicate,emergency,obstacle
+    "cmd":"communicate", //auth,leave,join,communicate,emergency,obstacle, sync.
     "contents": {
         "location":{
             "lat": 37.7749,
             "lon": -122.4194
         },
         "distance":{
-            "front": 10,
+            "front": 10,   //gps 
             "back": 10,
-            "lead": 10
+            "lead": 10 
         },
-        "speed": 60,
+        "speed": 10,
         "status": "normal", //running, stopped, emergency, error
-        "brake_force": 0, //0.0 -> 1.0
+        "brake_force": 0.8, //0.0 -> 1.0
         "error_code": "ER001"
     },
     "msg_id": "<uuid>",

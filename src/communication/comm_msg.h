@@ -60,8 +60,12 @@ class TruckMessage {
         }
 
         // Serialize JSON
-        std::string serialize() const {
-            return payload.dump(4);
+        std::string serialize(bool pretty=false) const {
+            if (pretty) {
+                return payload.dump(4);
+            } else {
+                return payload.dump();
+            }
         }
 
         // Getters
@@ -152,6 +156,7 @@ class TruckMessage {
             std::string data = serialize();
             // send(socket, data.c_str(), data.size(), 0);
         }
+
 };
 
 #endif // TRUCKMESSAGE_H

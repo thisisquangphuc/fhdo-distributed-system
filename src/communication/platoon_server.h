@@ -5,8 +5,12 @@
 #include <map>
 #include <netinet/in.h> // For sockaddr_in
 #include <thread>
+#include <uuid/uuid.h>
+
 #include "utils/env.h"
 #include "utils/config.h"
+#include "communication/comm_msg.h"
+#include "utils/logger.h"
 
 using namespace std;
 class PlatoonServer {
@@ -33,6 +37,21 @@ class PlatoonServer {
 
         void start();
         void stop();
+
+        static void sendResponse(int clientSocket, nlohmann::json response) {
+            TruckMessage msg;
+            std::string payload = msg.buildPayload(response);
+            send(clientSocket, payload.c_str(), payload.size(), 0);
+        }
+
+        std::string generateTruckID() {
+            // Generate a unique Truck ID
+            uuid_t uuid;
+            char uuidStr[37];
+            uuid_generate(uuid);
+            uuid_unparse(uuid, uuidStr);
+            return std::string("TR00") + std::string(uuidStr);
+        }
 
 };
 
