@@ -48,7 +48,7 @@ bool PlatoonClient::initSocketConnection(int port, std::string host_ip, std::str
 
 // Initialize the UDP connection with server
 bool PlatoonClient::initUDPConnection(int port, std::string host_ip, std::string &error_message) {
-    const char *hello = "Hello from following truck.";
+//    const char *hello = "Hello from following truck.";
 
     // creating socket
     UDPSocket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -63,10 +63,10 @@ bool PlatoonClient::initUDPConnection(int port, std::string host_ip, std::string
     serverAddress.sin_port = htons(port);
     serverAddress.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
     
-    sendto(UDPSocket, (const char *)hello, strlen(hello), 
-        MSG_CONFIRM, (const struct sockaddr *) &serverAddress, sizeof(serverAddress)); 
+//    sendto(UDPSocket, (const char *)hello, strlen(hello), 
+//        MSG_CONFIRM, (const struct sockaddr *) &serverAddress, sizeof(serverAddress)); 
 
-    error_message.clear();
+//    error_message.clear();
     return true;
 }
 

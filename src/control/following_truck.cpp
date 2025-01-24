@@ -266,6 +266,7 @@ std::string FollowingTruck::listenForBroadcast() {
 void FollowingTruck::emergencyBrake() {
 //    this->brake_force *= (double)(rand() % 3 + 1); // [FIXME] increase force to accelarate stop
     if (this->brake_force >= MAX_BRAKE_FORCE) this->brake_force = MAX_BRAKE_FORCE;
+    this->in_Emergercy = true;
     this->sendCurrentStatus();
 }
 
@@ -326,6 +327,7 @@ void FollowingTruck::speedControl() {
             this->brake_force = 0.0;
 
             this->ref_speed = 0.0;
+            if (!this->in_Emergercy) this->truck_status = "running";
         }
     } else if (this->truck_speed > 0) { // while running
         // 
@@ -351,6 +353,7 @@ void FollowingTruck::speedControl() {
 void FollowingTruck::initTruck() {
     this->truck_id = "TRUCK";
     this->retry_times = 0;
+    this->in_Emergercy = false;
 
     this->truck_lat_loc = 51.4941;
     this->truck_lon_loc = 7.4204;
