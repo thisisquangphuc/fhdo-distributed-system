@@ -34,7 +34,8 @@ class FollowingTruck {
 
     private:
         int retry_times;
-        int port;
+        int tcp_port;
+        int udp_port;
         std::string host_ip;
 
         std::string truck_id;

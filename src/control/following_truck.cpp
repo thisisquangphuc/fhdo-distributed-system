@@ -26,20 +26,21 @@ bool FollowingTruck::askToJoinPlatoon() {
     send_message = auth_req.buildPayload();
     spdlog::info("[{}]: {}", __func__, send_message);               
 
-    this->port = env_get_int("PORT", 8080);
+    this->tcp_port = env_get_int("PORT", 8080);
     this->host_ip = env_get("HOST_IP", "127.0.0.1");
 
     // Print port and host info 
-    spdlog::debug("[{}]: Port: {}", __func__, this->port);
+    spdlog::debug("[{}]: Port: {}", __func__, this->tcp_port);
     spdlog::debug("[{}]: Host IP: {}", __func__, this->host_ip);
 
-    if (!this->platoonClient.startClient(this->port, this->host_ip, error_message)) {
+    if (!this->platoonClient.startClient(this->tcp_port, this->host_ip, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
         return false;
     }
 
-    if (!this->platoonClient.initUDPConnection(this->port, this->host_ip, error_message)) {
+    this->udp_port = env_get_int("UDP_PORT", 59059);
+    if (!this->platoonClient.initUDPConnection(this->udp_port, this->host_ip, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
         return false;
