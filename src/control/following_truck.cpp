@@ -46,19 +46,16 @@ bool FollowingTruck::askToJoinPlatoon() {
     }
 
     // 
-    spdlog::info("[{}]: Waiting to receive truck info from Leading ... ", __func__);
     json leading_rsp = json::parse(this->platoonClient.receiveMessage()); 
-
+    spdlog::info("[{}]: Response from LEADING ... {}", __func__, leading_rsp.dump());
     // Receive authentication result 
     if (leading_rsp["cmd"] != "auth_ok") {
         spdlog::info("[{}]: Authentication failed.", __func__);
         this->retry_times++;
         return false;
     }
-    this->truck_id = leading_rsp["contents"]["id"]; // [FIXME]
+    this->truck_id = leading_rsp["contents"]["id"];
     this->truck_message.setTruckID(this->truck_id);
-//    this->truck_speed = leading_rsp.getSpeed(); // [FIXME] Need to uncomment 
-//    this->truck_lead_d = leading_rsp.getLeadDistance(); // [REVIEW]
     std::cout << this->truck_message.buildPayload() << std::endl;
 
     this->resetRetryCounter();
@@ -69,52 +66,95 @@ bool FollowingTruck::askToJoinPlatoon() {
 bool FollowingTruck::joiningPlatoon() {
     std::string send_message;
     std::string error_message;
-    TruckMessage done_message = this->truck_message;
+    TruckMessage join_message = this->truck_message;
 
     // Join the platoon
-    spdlog::info("[{}]: Joining from the end of platoon system.", __func__);  
-    done_message.setTruckID(this->truck_id);
-    done_message.setCommand("join");
+    join_message.setTruckID(this->truck_id);
+    join_message.setCommand("join");
 
-    send_message = done_message.buildPayload();
-    spdlog::info("[{}]: Done joining - {}", __func__, send_message);
+    send_message = join_message.buildPayload();
+    spdlog::info("[{}]: Joining from the end of platoon system - {}", __func__, send_message);  
     if (!this->platoonClient.sendMessage(send_message, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
         return false;
     }
 
+//    // Receive truck info 
+//    spdlog::info("[{}]: Receive truck info from LEADING ... ", __func__);
+//    TruckMessage leading_rsp(this->platoonClient.receiveMessage()); 
+//
+//    // Receive joining result 
+//    if (leading_rsp.getCommand() != "join_ok") {
+//        spdlog::info("[{}]: Joining failed.", __func__);
+//        this->retry_times++;
+//        return false;
+//    }
+
     // Do calculation
     spdlog::info("[{}]: {} - Calculating truck status.", __func__, this->truck_id);  
     this->truck_front_d = TRUCK_SAFE_DISTANCE;
-    this->truck_back_d = 0.0;
-    this->truck_status = "running";
+    this->truck_back_d = TRUCK_SAFE_DISTANCE;
+//    this->truck_lead_d = leading_rsp.getLeadDistance(); // [REVIEW]
+    this->truck_status = "runnnig";
+//    this->truck_speed = leading_rsp.getSpeed(); 
 
     this->updateCurrentStatus();
+
+//    // Done joining
+//    join_message = this->truck_message;
+//    join_message.setCommand("join_done");
+//
+//    send_message = join_message.buildPayload();
+//    spdlog::info("[{}]: Done joining - {}", __func__, send_message);
+//    if (!this->platoonClient.sendMessage(send_message, error_message)) {
+//        std::cerr << "Error conneting to server: " << error_message << std::endl;
+//        this->retry_times++;
+//        return false;
+//    }
+
     this->resetRetryCounter();
     return true;
 }
 
 //
 bool FollowingTruck::leavingPlatoon() {
+    std::string send_message;
     std::string error_message;
-    TruckMessage leave_req = this->truck_message;
+    TruckMessage leave_message = this->truck_message;
     
-    leave_req.setCommand("leave");
+    // Leave request
+    leave_message.setCommand("leave");
 
-    spdlog::info("[{}]: Asking to leave the platoon ... - {}", __func__, this->truck_id, leave_req.serialize());
-    if (!this->platoonClient.sendMessage(leave_req.buildPayload(), error_message)) {
+    send_message = leave_message.buildPayload();
+    spdlog::info("[{}]: Asking to leave the platoon ... - {}", __func__, this->truck_id, send_message);
+    if (!this->platoonClient.sendMessage(send_message, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
         return false;
     }
 
+    // Approval from leading 
     spdlog::info("[{}]: {} - Waiting for approval from LEADING Truck ... ", __func__, this->truck_id);
-    TruckMessage server_rsp(this->platoonClient.receiveMessage());
-    spdlog::info("[{}]: {} - Response from LEADING truck - {}", __func__, this->truck_id, server_rsp.buildPayload());
+    TruckMessage leading_rsp(this->platoonClient.receiveMessage());
 
-    // Prepare and leave the platoon
-    spdlog::info("[{}]: {} - Leaving platoon ...", __func__, this->truck_id);  
+//    // Receive joining result 
+//    if (leading_rsp.getCommand() != "leave_start") {
+//        spdlog::info("[{}]: Leaving failed.", __func__);
+//        this->retry_times++;
+//        return false;
+//    }
+//
+//    // Prepare and leave the platoon
+//    leave_message.setCommand("leave_done");
+//
+//    send_message = leave_message.buildPayload();
+//    spdlog::info("[{}]: Leaving the platoon ... - {}", __func__, send_message);
+//    if (!this->platoonClient.sendMessage(send_message, error_message)) {
+//        std::cerr << "Error conneting to server: " << error_message << std::endl;
+//        this->retry_times++;
+//        return false;
+//    }
     
     this->platoonClient.closeClientSocket();
     this->resetRetryCounter();
@@ -146,26 +186,32 @@ bool FollowingTruck::sendCurrentStatus() {
 }
 
 //
-bool FollowingTruck::listenForLeading() {
+std::string FollowingTruck::listenForLeading() {
     std::string leading_rsp;
     std::string error_message;
-    bool emergency = false;
 
     spdlog::debug("[{}]: {} - Listening for LEADING Truck ... ", __func__, this->truck_id);
     leading_rsp = this->platoonClient.receiveMessage();
     
     if (!leading_rsp.empty()) {
-        spdlog::debug("[{}]: Message from LEADING Truck: {} ", __func__, leading_rsp);
+        json leading_mess = json::parse(leading_rsp);
+        spdlog::debug("[{}]: Message from LEADING Truck: {} ", __func__, leading_mess.dump());
         
-        TruckMessage rsp_mess(leading_rsp);
-        if (rsp_mess.getCommand() == "emergency") { 
-            this->truck_status = "emergency";
-            this->brake_force = rsp_mess.getBrakeForce();
-            emergency = true;
-        }
-    }
+        std::string leading_cmd = leading_mess["cmd"];
 
-    return emergency;
+        if (leading_cmd == "emergency") {
+            this->truck_status = "emergency";
+            this->brake_force = (double)leading_mess["contents"].value("brake_force", this->brake_force);
+        } else if (leading_cmd == "slow_down") {
+            this->brake_force = (double)leading_mess["contents"].value("brake_force", this->brake_force);
+        } else if (leading_cmd == "speed_up") {
+            this->truck_speed += TRUCK_SPEED_UP_SPEED;
+        } else {
+            leading_cmd = "";
+        }
+        return leading_cmd;
+    }
+    return "";
 }
 
 //
@@ -184,7 +230,7 @@ void FollowingTruck::emergencyBrake() {
 // 
 void FollowingTruck::updateCurrentStatus() {
     // Calculate and update new status    
-    spdlog::info("[{}]: {} - Update truck status.", __func__, this->truck_id);
+    spdlog::debug("[{}]: {} - Update truck status.", __func__, this->truck_id);
 
     this->monitorDistance();
     this->speedControl();
@@ -202,8 +248,8 @@ void FollowingTruck::monitorDistance() {
     if (this->truck_speed > 0) {
         // simulate distance between [0.95*Distance, 1.15*Distance]
         this->truck_front_d = (double)TRUCK_SAFE_DISTANCE * (rand() % 10 + 95) / 100;  
-        if (this->truck_back_d != 0.0) // not the last truck in platoon
-            this->truck_back_d = (double)TRUCK_SAFE_DISTANCE * (rand() % 10 + 95) / 100;
+//        if (this->truck_back_d != 0.0) // not the last truck in platoon
+        this->truck_back_d = (double)TRUCK_SAFE_DISTANCE * (rand() % 10 + 95) / 100;
     }
 }
 
@@ -211,17 +257,39 @@ void FollowingTruck::monitorDistance() {
 void FollowingTruck::speedControl() {
     // When having brake
     if ((this->brake_force > 0) && (this->truck_speed > 0)) { // brake_force and truck is running 
-        this->truck_speed -= (double)this->truck_speed*this->brake_force;  
+        this->truck_speed -= (double)TRUCK_BRAKE_SPEED*this->brake_force;  
+        //
         if (this->truck_speed <= 0) { 
             this->brake_force = 0.0;
             this->truck_speed = 0.0; 
+
+            this->ref_speed = 0.0;
         }
-    } else if (this->truck_speed > 0) {
-        // simulate speed between [0.95*Speed, 1.15*Speed]
-        this->truck_speed = (double)this->truck_speed * (rand() % 10 + 95 ) / 100;
+        // maintain speed to sync with platoon system  
+        if (this->truck_speed < (ref_speed*0.95)) {
+            this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
+            this->brake_force = 0.0;
+
+            this->ref_speed = 0.0;
+        }
+    } else if (this->truck_speed > 0) { // while running
+        // 
+        if (this->getTruckStatus() == "speed_up") {
+            this->truck_speed += TRUCK_SPEED_UP_SPEED * (rand() % 10 + 95 ) / 100;
+            // maintain speed to sync with platoon system  
+            if (this->truck_speed > (ref_speed*1.15)) {
+                this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
+                this->truck_status = "running";
+                
+                this->ref_speed = 0.0;
+            }
+        } else { // normal
+          // simulate speed between [0.95*Speed, 1.15*Speed]
+          this->truck_speed = (double)this->truck_speed * (rand() % 10 + 95 ) / 100;
+        }
     }
 
-    if (this->truck_speed == 0) this->truck_status = "stop";
+    if (this->truck_speed == 0) this->truck_status = "stopped";
 }
 
 //
@@ -241,8 +309,16 @@ void FollowingTruck::initTruck() {
     this->brake_force = 0.0;
     this->error_code = "";
 
+    this->ref_speed = 0.0;
+
     this->truck_message.setTruckID(this->truck_id);
+
     this->updateCurrentStatus();
+}
+
+//
+std::string FollowingTruck::getTruckStatus() {
+    return this->truck_status;
 }
 
 //

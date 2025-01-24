@@ -42,7 +42,9 @@ TruckRequest request;
 //
 typedef enum {
     NORMAL,
-    BRAKE,
+    BRAKING,
+    SLOWING,
+    SPEEDING,
     OSTACLE 
 } LeadNoti;
 LeadNoti leadingNoti;
@@ -90,7 +92,7 @@ void* following_fsm(void* arg) {
 
     while (true) {
         switch (get_current_state()) {
-            case IDLE:
+            case IDLE: //{
                 if (request == ASK_TO_JOIN) {
                     if (followingTruck.askToJoinPlatoon()) {
                         spdlog::info("Authenticate successfully.");
@@ -100,8 +102,8 @@ void* following_fsm(void* arg) {
                     }
                 } 
                 break;
-
-            case JOINING:
+            //}
+            case JOINING: //{
                 spdlog::info("Joining platoon ...");
                 if (followingTruck.joiningPlatoon()) { 
 
@@ -115,48 +117,56 @@ void* following_fsm(void* arg) {
                     next_state = IDLE;
                 } 
                 break;
-
-            case NORMAL_OPERATION:
+            //}
+            case NORMAL_OPERATION: //{
 
                 if (request == ASK_TO_LEAVE) {
                     spdlog::info("Send leaving request.");
                     next_state = LEAVING;
                 } 
 
-                if (leadingNoti == BRAKE) {
+                if (leadingNoti == BRAKING) {
                     spdlog::info("Receive emergency brake from LEADING truck.");
 //                    followingTruck.startBraking();
                     pthread_create(&thread_emg_brake, NULL, &emergency_brake, NULL);
                     next_state = EMERGENCY_BRAKE;
                 }
 
+                if (leadingNoti == SLOWING) {
+                    spdlog::info("Receive slowing down from LEADING truck.");
+                    next_state = SLOW_DOWN;
+                }
+
+                if (leadingNoti == SPEEDING) {
+                    spdlog::info("Receive speeding up from LEADING truck.");
+                    next_state = SPEED_UP;
+                }
                 break;
-
-            case SPEED_UP:
+            //}
+            case SPEED_UP: //{
+                if (followingTruck.getTruckStatus() != "speed_up") {
+                    next_state = NORMAL_OPERATION;
+                }
                 break;
-
-            case SLOW_DOWN:
+            //}
+            case SLOW_DOWN: //{
+                if (followingTruck.getTruckStatus() != "slow_down") {
+                    next_state = NORMAL_OPERATION;
+                }
                 break;
-
-            case EMERGENCY_BRAKE:
-
-                if (request == ASK_TO_LEAVE) {
-                    pthread_join(thread_emg_brake, NULL);
-                    spdlog::info("Send leaving request.");
-                    next_state = LEAVING;
-                } 
-
-                if (leadingNoti == NORMAL) {
+            //}
+            case EMERGENCY_BRAKE: //{
+                if (leadingNoti != BRAKING) {
                     pthread_join(thread_emg_brake, NULL);
                     next_state = NORMAL_OPERATION;
                 }
                 
                 break;
-
-            case CONNECTION_LOST:
-                break;
-
-            case LEAVING:
+            //}
+            case CONNECTION_LOST: //{
+                break;  
+            //}
+            case LEAVING: //{
                 spdlog::debug("Wait for threads EXIT");
 
                 pthread_join(thread_send_stats, NULL); 
@@ -174,7 +184,7 @@ void* following_fsm(void* arg) {
                     next_state = NORMAL_OPERATION;
                 }
                 break;
-
+            //}
             default:
                 next_state = IDLE;
                 break;
@@ -214,11 +224,13 @@ void* send_current_status(void* arg) {
     int period = env_get_int("SEND_STATUS_PERIOD", 1);
     while (true) {
         if (get_current_state() == IDLE) break;
-        if (!followingTruck.sendCurrentStatus()) {
-            spdlog::warn("Failed to send current status to server.");
-        }
-        if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
-            spdlog::error("Connection lost with server.");
+        if (get_current_state() != LEAVING) {
+            if (!followingTruck.sendCurrentStatus()) {
+                spdlog::warn("Failed to send current status to server.");
+            }
+            if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+                spdlog::error("Connection lost with server.");
+            }
         }
         // send every 2 seconds
         sleep(period); 
@@ -239,9 +251,13 @@ void* check_lead_message(void* arg) {
     int period = env_get_int("LISTEN_LEADING_PERIOD", 1);
     while (true) {
         if (get_current_state() == IDLE) break;
-        if (followingTruck.listenForLeading()) {
-            leadingNoti = BRAKE;
-        }
+        std::string leading_mess = followingTruck.listenForLeading();
+
+        if (leading_mess == "emergency")      leadingNoti = BRAKING;
+        else if (leading_mess == "slow_down")  leadingNoti = SLOWING;
+        else if (leading_mess == "speed_up")  leadingNoti = SPEEDING;
+        else                                  leadingNoti = NORMAL;
+
         sleep(period);
     } 
     spdlog::debug("Exit check notification.");

@@ -23,16 +23,17 @@ class FollowingTruck {
         bool joiningPlatoon();
         bool leavingPlatoon();
         bool sendCurrentStatus();
-        bool listenForLeading();
+        std::string listenForLeading();
         void emergencyBrake();
 //        void startBraking();
         int getRetryTimes();
         void resetRetryCounter();
+        std::string getTruckStatus();
 
 
     private:
-        int port;
         int retry_times;
+        int port;
         std::string host_ip;
 
         std::string truck_id;
@@ -42,6 +43,8 @@ class FollowingTruck {
         std::string truck_status;
         double brake_force;
         std::string error_code;
+
+        double ref_speed;
 
         TruckMessage truck_message;
         
