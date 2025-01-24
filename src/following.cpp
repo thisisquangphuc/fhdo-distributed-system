@@ -94,12 +94,14 @@ void* following_fsm(void* arg) {
         switch (get_current_state()) {
             case IDLE: //{
                 if (request == ASK_TO_JOIN) {
+                    int period = env_get_int("LISTEN_LEADING_PERIOD", 1);
                     if (followingTruck.askToJoinPlatoon()) {
                         spdlog::info("Authenticate successfully.");
                         next_state = JOINING;
                     } else if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
                         spdlog::info("Failed to authenticate truck.");
                     }
+                    sleep(period);
                 } 
                 break;
             //}
@@ -221,7 +223,7 @@ void* send_current_status(void* arg) {
     // wait to change state
     while (get_current_state() != NORMAL_OPERATION);
     //
-    int period = env_get_int("SEND_STATUS_PERIOD", 1);
+    int period = env_get_int("SEND_STATUS_PERIOD", 2);
     while (true) {
         if (get_current_state() == IDLE) break;
         if (get_current_state() != LEAVING) {
@@ -232,7 +234,6 @@ void* send_current_status(void* arg) {
                 spdlog::error("Connection lost with server.");
             }
         }
-        // send every 2 seconds
         sleep(period); 
     }
     spdlog::debug("Exit send current status.");

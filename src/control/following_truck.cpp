@@ -54,7 +54,7 @@ bool FollowingTruck::askToJoinPlatoon() {
         this->retry_times++;
         return false;
     }
-    this->truck_id = leading_rsp["contents"]["id"];
+    this->truck_id = leading_rsp["contents"].value("id", "TRUCK_0000");
     this->truck_message.setTruckID(this->truck_id);
     std::cout << this->truck_message.buildPayload() << std::endl;
 
@@ -80,16 +80,16 @@ bool FollowingTruck::joiningPlatoon() {
         return false;
     }
 
-//    // Receive truck info 
-//    spdlog::info("[{}]: Receive truck info from LEADING ... ", __func__);
-//    TruckMessage leading_rsp(this->platoonClient.receiveMessage()); 
-//
-//    // Receive joining result 
-//    if (leading_rsp.getCommand() != "join_ok") {
-//        spdlog::info("[{}]: Joining failed.", __func__);
-//        this->retry_times++;
-//        return false;
-//    }
+    // Receive truck info 
+    spdlog::info("[{}]: Receive truck info from LEADING ... ", __func__);
+    TruckMessage leading_rsp(this->platoonClient.receiveMessage()); 
+
+    // Receive joining result 
+    if (leading_rsp.getCommand() != "join_ok") {
+        spdlog::info("[{}]: Joining failed.", __func__);
+        this->retry_times++;
+        return false;
+    }
 
     // Do calculation
     spdlog::info("[{}]: {} - Calculating truck status.", __func__, this->truck_id);  
@@ -97,21 +97,21 @@ bool FollowingTruck::joiningPlatoon() {
     this->truck_back_d = TRUCK_SAFE_DISTANCE;
 //    this->truck_lead_d = leading_rsp.getLeadDistance(); // [REVIEW]
     this->truck_status = "runnnig";
-//    this->truck_speed = leading_rsp.getSpeed(); 
+    this->truck_speed = leading_rsp.getSpeed(); 
 
     this->updateCurrentStatus();
 
-//    // Done joining
-//    join_message = this->truck_message;
-//    join_message.setCommand("join_done");
-//
-//    send_message = join_message.buildPayload();
-//    spdlog::info("[{}]: Done joining - {}", __func__, send_message);
-//    if (!this->platoonClient.sendMessage(send_message, error_message)) {
-//        std::cerr << "Error conneting to server: " << error_message << std::endl;
-//        this->retry_times++;
-//        return false;
-//    }
+    // Done joining
+    join_message = this->truck_message;
+    join_message.setCommand("join_done");
+
+    send_message = join_message.buildPayload();
+    spdlog::info("[{}]: Done joining - {}", __func__, send_message);
+    if (!this->platoonClient.sendMessage(send_message, error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        this->retry_times++;
+        return false;
+    }
 
     this->resetRetryCounter();
     return true;
@@ -138,23 +138,23 @@ bool FollowingTruck::leavingPlatoon() {
     spdlog::info("[{}]: {} - Waiting for approval from LEADING Truck ... ", __func__, this->truck_id);
     TruckMessage leading_rsp(this->platoonClient.receiveMessage());
 
-//    // Receive joining result 
-//    if (leading_rsp.getCommand() != "leave_start") {
-//        spdlog::info("[{}]: Leaving failed.", __func__);
-//        this->retry_times++;
-//        return false;
-//    }
-//
-//    // Prepare and leave the platoon
-//    leave_message.setCommand("leave_done");
-//
-//    send_message = leave_message.buildPayload();
-//    spdlog::info("[{}]: Leaving the platoon ... - {}", __func__, send_message);
-//    if (!this->platoonClient.sendMessage(send_message, error_message)) {
-//        std::cerr << "Error conneting to server: " << error_message << std::endl;
-//        this->retry_times++;
-//        return false;
-//    }
+    // Receive joining result 
+    if (leading_rsp.getCommand() != "leave_start") {
+        spdlog::info("[{}]: Leaving failed.", __func__);
+        this->retry_times++;
+        return false;
+    }
+
+    // Prepare and leave the platoon
+    leave_message.setCommand("leave_done");
+
+    send_message = leave_message.buildPayload();
+    spdlog::info("[{}]: Leaving the platoon ... - {}", __func__, send_message);
+    if (!this->platoonClient.sendMessage(send_message, error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        this->retry_times++;
+        return false;
+    }
     
     this->platoonClient.closeClientSocket();
     this->resetRetryCounter();
@@ -202,10 +202,13 @@ std::string FollowingTruck::listenForLeading() {
         if (leading_cmd == "emergency") {
             this->truck_status = "emergency";
             this->brake_force = (double)leading_mess["contents"].value("brake_force", this->brake_force);
+            this->ref_speed = (double)leading_mess["contents"].value("speed", this->truck_speed);
         } else if (leading_cmd == "slow_down") {
             this->brake_force = (double)leading_mess["contents"].value("brake_force", this->brake_force);
+            this->ref_speed = (double)leading_mess["contents"].value("speed", this->truck_speed);
         } else if (leading_cmd == "speed_up") {
             this->truck_speed += TRUCK_SPEED_UP_SPEED;
+            this->ref_speed = (double)leading_mess["contents"].value("speed", this->truck_speed);
         } else {
             leading_cmd = "";
         }
@@ -254,6 +257,19 @@ void FollowingTruck::monitorDistance() {
 }
 
 //
+void FollowingTruck::monitorLocation() {
+    if (this->truck_speed > 0) {    
+        // simulate location 
+        this->truck_lat_loc = (rand() % 2) ? 
+            (this->truck_lat_loc + ((rand() % 20)/ 1000)) : 
+            (this->truck_lat_loc - ((rand() % 20) / 1000));
+
+        this->truck_lon_loc = (rand() % 2) ? 
+            (this->truck_lon_loc + ((rand() % 20)/ 1000)) : 
+            (this->truck_lon_loc - ((rand() % 20) / 1000));
+    }}
+
+//
 void FollowingTruck::speedControl() {
     // When having brake
     if ((this->brake_force > 0) && (this->truck_speed > 0)) { // brake_force and truck is running 
@@ -297,8 +313,8 @@ void FollowingTruck::initTruck() {
     this->truck_id = "TRUCK";
     this->retry_times = 0;
 
-    this->truck_lat_loc = 0.0;
-    this->truck_lon_loc = 0.0;
+    this->truck_lat_loc = 51.4941;
+    this->truck_lon_loc = 7.4204;
 
     this->truck_front_d = 0.0;
     this->truck_back_d = 0.0;

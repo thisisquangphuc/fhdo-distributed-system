@@ -53,6 +53,7 @@ class FollowingTruck {
         void initTruck();
         void updateCurrentStatus();
         void monitorDistance();
+        void monitorLocation();
         void speedControl();
 };
 
