@@ -55,4 +55,31 @@ class PlatoonServer {
 
 };
 
+class UdpBroadcast {
+    public:
+        // singleton get instance
+        static UdpBroadcast& getInstance() {
+            //get port from env
+            int port = std::stoi(env_get("UDP_PORT", "59059"));
+            static UdpBroadcast instance(port);
+            return instance;
+        }
+
+        void setPort(int port) { this->port = port; }
+        // Send emergency message via UDP
+        void broadcastMessage(const std::string& message);
+
+        // Delete copy constructor and assignment operator
+        UdpBroadcast(const UdpBroadcast&) = delete;
+        UdpBroadcast& operator=(const UdpBroadcast&) = delete;
+
+    private:
+        UdpBroadcast(int port);
+        ~UdpBroadcast();
+        
+        int socketFd;
+        int port;
+        struct sockaddr_in broadcastAddr;
+};
+
 #endif // PLATOON_SERVER_H

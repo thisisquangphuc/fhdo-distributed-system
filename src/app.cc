@@ -7,10 +7,16 @@
  */
 
 #include "app.h"
+AppStateMachine appTasks;
+
+AppStateMachine& getAppTasks() {
+    return appTasks;
+}
 
 void system_init() {
     init_logger();
     tcp_init();
+    udp_init();
 }
 
 void initPlatoonData() {
@@ -37,10 +43,24 @@ void AppStateMachine::idle() {
 
 void AppStateMachine::normalOperation() {
     // Logic for normal operation
+    // Just process message from the queue
 }
 
 void AppStateMachine::emergencyBrake() {
-    // Logic for emergency brake
+    /* Logic for emergency brake */ 
+    // Broad cast UDP message
+
+    nlohmann::json eMsg;
+    eMsg["command"] = "emergency";
+    eMsg["truck_id"] = "LEADING_001";
+    eMsg["contents"] = json::object();
+    eMsg["contents"]["brake_force"] = 0.8;
+    eMsg["contents"]["speed"] = 5.0;
+
+    // Send the broadcast
+    auto& udp = UdpBroadcast::getInstance();
+    udp.broadcastMessage(to_string(eMsg));
+
 }
 
 void AppStateMachine::connectionLost() {

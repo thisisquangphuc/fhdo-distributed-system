@@ -16,7 +16,7 @@
 #include "control/event_manager.h"
 
 using namespace std;
-AppStateMachine appTasks;
+
 
 void load_environment(string env_file) {
 
@@ -34,12 +34,15 @@ int main() {
     //load evironment
     load_environment("/Users/phuc/vscode-workspace/FHDO-repos/fhdo-distributed-system/src/.env");
     
+    std::this_thread::sleep_for(std::chrono::seconds(1));
     //system init
     system_init();
     
     spdlog::info("Starting the Truck Platooning system...");
 
     // create thread that to handle appTasks
+    AppStateMachine& appTasks = getAppTasks();
+
     std::thread app_thread(&AppStateMachine::handleEvent, &appTasks);
     std::thread regularWorkerThread(processCommands, std::ref(regularQueue), std::ref(truckEventFSM));
     std::thread emergencyWorkerThread(processCommands, std::ref(emergencyQueue), std::ref(truckEventFSM));

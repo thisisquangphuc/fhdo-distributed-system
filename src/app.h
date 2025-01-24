@@ -12,8 +12,9 @@
 #include <string>
 #include <map>
 #include <netinet/in.h> // For sockaddr_in
-#include "communication/platoon_server.h"
+#include <nlohmann/json.hpp>
 
+#include "communication/platoon_server.h"
 #include "utils/env.h"
 #include "utils/logger.h"
 #include "communication/comm_msg.h"
@@ -21,6 +22,7 @@
 #include "control/monitor.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 class AppStateMachine {
     private:
@@ -69,6 +71,18 @@ class AppStateMachine {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
+
+        void setAppState(State state) { 
+            currentState = state;
+        }
+
+        void switchToEmergency() {
+            currentState = State::EMERGENCY;
+        }
+
+        void switchToNormal() {
+            currentState = State::NORMAL_OPERATION;
+        }
 };
 
 void inline start_platoon_server(int port, std::string host_ip) {
@@ -104,6 +118,16 @@ inline int tcp_init() {
     return 0;
 }
 
+inline int udp_init() {
+    int port = env_get_int("UDP_PORT", 59059);
+    json data;
+    data["message"] = "This is Platoon trucks UDP channel!";
+    auto& broadcaster = UdpBroadcast::getInstance();
+    broadcaster.broadcastMessage(to_string(data));
+    return 0;
+}
+
 void system_init();
+AppStateMachine& getAppTasks();
 
 #endif
