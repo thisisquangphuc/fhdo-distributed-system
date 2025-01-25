@@ -6,6 +6,7 @@
 #include <netinet/in.h> // For sockaddr_in
 #include <thread>
 #include <uuid/uuid.h>
+#include <unistd.h>
 
 #include "utils/env.h"
 #include "utils/config.h"
@@ -38,10 +39,11 @@ class PlatoonServer {
         void start();
         void stop();
 
-        static void sendResponse(int clientSocket, nlohmann::json response) {
-            TruckMessage msg;
-            std::string payload = msg.buildPayload(response);
-            send(clientSocket, payload.c_str(), payload.size(), 0);
+        static void sendResponse(int clientSocket, const std::string& response) {
+            // TruckMessage msg;
+            // std::string payload = msg.buildPayload(response);
+            // std::string payload = msg.buildPayload(response);
+            send(clientSocket, response.c_str(), response.size(), 0);
         }
 
         std::string generateTruckID() {
@@ -55,31 +57,33 @@ class PlatoonServer {
 
 };
 
-class UdpBroadcast {
+class UDPBroadcastServer {
+    private:
+        int broadcastSocket;
+        struct sockaddr_in broadcastAddress;
+        std::mutex broadcastMutex;
+
+        // Private constructor for Singleton
+        UDPBroadcastServer() : broadcastSocket(-1) {}
+
+        // Delete copy constructor and assignment operator
+        UDPBroadcastServer(const UDPBroadcastServer&) = delete;
+        UDPBroadcastServer& operator=(const UDPBroadcastServer&) = delete;
+
     public:
-        // singleton get instance
-        static UdpBroadcast& getInstance() {
-            //get port from env
-            int port = std::stoi(env_get("UDP_PORT", "59059"));
-            static UdpBroadcast instance(port);
+        ~UDPBroadcastServer() {
+            if (broadcastSocket != -1) {
+                close(broadcastSocket);
+            }
+        }
+
+        static UDPBroadcastServer& getInstance() {
+            static UDPBroadcastServer instance;
             return instance;
         }
 
-        void setPort(int port) { this->port = port; }
-        // Send emergency message via UDP
-        void broadcastMessage(const std::string& message);
+        void initialize(uint16_t port);
 
-        // Delete copy constructor and assignment operator
-        UdpBroadcast(const UdpBroadcast&) = delete;
-        UdpBroadcast& operator=(const UdpBroadcast&) = delete;
-
-    private:
-        UdpBroadcast(int port);
-        ~UdpBroadcast();
-        
-        int socketFd;
-        int port;
-        struct sockaddr_in broadcastAddr;
+        void sendBroadcast(const std::string& message);
 };
-
 #endif // PLATOON_SERVER_H

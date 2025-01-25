@@ -64,7 +64,7 @@ class RegularCommandQueue : public MsgQueue {
         }
 
         std::string dequeueCommand() override {
-            cout << "Popping from RegularCommandQueue" << endl;
+            // cout << "Popping from RegularCommandQueue" << endl;
             std::unique_lock<std::mutex> lock(mutex);
             cv.wait(lock, [this]() { return !queue.empty() || stopFlag; });
             if (stopFlag && queue.empty()) return "";
@@ -83,7 +83,7 @@ class EmergencyCommandQueue : public MsgQueue {
         }
 
         std::string dequeueCommand() override {
-            cout << "Popping from EmergencyCommandQueue" << endl;
+            // cout << "Popping from EmergencyCommandQueue" << endl;
             std::unique_lock<std::mutex> lock(mutex);
             cv.wait(lock, [this]() { return !queue.empty() || stopFlag; });
             if (stopFlag && queue.empty()) return "";
@@ -137,7 +137,7 @@ class TruckEventFSM {
 
             if (it != stateMap.end()) {
                 currentState = it->second;
-                std::cout << "State set to: " << command << std::endl;
+                // std::cout << "State set to: " << command << std::endl;
             } else {
                 throw std::invalid_argument("Invalid command name: " + command);
             }
@@ -164,7 +164,8 @@ class TruckEventFSM {
                 {"status", State::Communicate},
                 {"emergency", State::Emergency},
                 {"obstacle", State::Obstacle},
-                {"test_emergency", State::External},
+                {"test_emergency_on", State::External},
+                {"test_emergency_off", State::External},
                 {"test_normal", State::External}
             };
             return stateMap;

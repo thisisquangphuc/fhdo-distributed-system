@@ -64,7 +64,7 @@ nlohmann::json PlatoonDataManager::getPlatoonDataJSON() {
 
     // Convert the data to JSON
     nlohmann::json jsonData = {
-        {"contents", {
+        // {"contents", {
             {"location", {
                 {"lat", platoonData.latitude},
                 {"lon", platoonData.longitude}
@@ -73,7 +73,7 @@ nlohmann::json PlatoonDataManager::getPlatoonDataJSON() {
             {"status", status},
             {"brake_force", platoonData.brakeForce},
             {"error_code", "0000"}
-        }}
+        // }}
     };
 
     return jsonData;

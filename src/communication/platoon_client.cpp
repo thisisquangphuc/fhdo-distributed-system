@@ -5,6 +5,7 @@
 #include <sys/ioctl.h> 
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "utils/logger.h"
 
 // Constructor
 PlatoonClient::PlatoonClient() : clientSocket(-1), UDPSocket(-1) {}
@@ -63,8 +64,7 @@ bool PlatoonClient::initUDPConnection(int port, std::string host_ip, std::string
     serverAddress.sin_port = htons(port);
     serverAddress.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
     
-    sendto(UDPSocket, (const char *)hello, strlen(hello), 
-        MSG_CONFIRM, (const struct sockaddr *) &serverAddress, sizeof(serverAddress)); 
+    // sendto(UDPSocket, (const char *)hello, strlen(hello), MSG_CONFIRM, (const struct sockaddr *) &serverAddress, sizeof(serverAddress)); 
 
     error_message.clear();
     return true;
@@ -117,7 +117,7 @@ std::string PlatoonClient::receiveUDPMessage() {
 
     n = recvfrom(UDPSocket, (char*)buffer, 1024, MSG_WAITALL, (struct sockaddr *) &serverAddress, &len);;
     buffer[n] = '\0';
-    
     std::string receivedMessage(buffer);
+    spdlog::warn("Received UDP message: {}", receivedMessage);
     return receivedMessage;
 }

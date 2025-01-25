@@ -48,6 +48,7 @@ class PlatoonDataManager {
     private:
         PlatoonData platoonData; // TruckID -> TruckData
         std::mutex dataMutex; // Mutex to ensure thread-safety
+        // EmergencyEvent emgEvents
 
         PlatoonDataManager() = default;
     public:

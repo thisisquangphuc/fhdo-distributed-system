@@ -58,8 +58,16 @@ void AppStateMachine::emergencyBrake() {
     eMsg["contents"]["speed"] = 5.0;
 
     // Send the broadcast
-    auto& udp = UdpBroadcast::getInstance();
-    udp.broadcastMessage(to_string(eMsg));
+    // auto& udp = UDPBroadcastServer::getInstance();
+    // udp.sendBroadcast(to_string(eMsg));
+    auto& broadcastServer = UDPBroadcastServer::getInstance();
+    // broadcastServer.initialize(59059);
+    broadcastServer.sendBroadcast("Emergency: Obstacle detected ahead!");
+    broadcastServer.sendBroadcast(to_string(eMsg));
+
+    //delay
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    spdlog::warn("Truck is in EMERGENCY state.");
 
 }
 

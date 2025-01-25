@@ -92,7 +92,8 @@ bool FollowingTruck::joiningPlatoon() {
     TruckMessage leading_rsp(this->platoonClient.receiveMessage()); 
 
     // Receive joining result 
-    if (leading_rsp.getCommand() != "join_ok") {
+    spdlog::info(" Response from LEADING ... {}",leading_rsp.getCommand());
+    if (leading_rsp.getCommand() != "join_accepted") {
         spdlog::info("[{}]: Joining failed.", __func__);
         this->retry_times++;
         return false;

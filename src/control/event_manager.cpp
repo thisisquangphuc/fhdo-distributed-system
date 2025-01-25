@@ -21,7 +21,7 @@ void processCommands(MsgQueue& queue, TruckEventFSM& stateMachine) {
         try {
             std::string command = queue.dequeueCommand();
             if (command.empty()) break; // Stop if queue is stopped
-            std::cout << "Processing Command: " << command << std::endl;
+            // std::cout << "Processing Command: " << command << std::endl;
             // Parse the command
             TruckMessage truckMsg(command);
             string cmdName = truckMsg.getCommand();
@@ -62,6 +62,7 @@ void TruckEventFSM::handleJoin(const TruckMessage& msg){
         // send command "join_accepted" and data to client
         TruckMessage rspMsg;
         rspMsg.setCommand("join_accepted");
+        
         PlatoonServer::sendResponse(cli_socket, rspMsg.buildPayload(data));
 
     } catch (const std::invalid_argument& e) {
@@ -106,7 +107,7 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
             vector<pair<string, int>> allTrucks = truckManager.getTrucks();
             for (const auto& truck : allTrucks) {
                 cli_socket = truckManager.getSocketId(truck.first);
-                PlatoonServer::sendResponse(cli_socket, rspMsg.buildPayload(data));
+                PlatoonServer::sendResponse(cli_socket, data);
             }
 
             return;
@@ -142,20 +143,18 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
 
         TruckMessage rspMsg;
         rspMsg.setCommand("slow_down");
-        string payload = rspMsg.buildPayload(data);
         for (const auto& truck : allTrucks) {
             if (truck.first == id) {
                 // skip the leaving truck
                 continue;
             }
             cli_socket = truck.second;
-            PlatoonServer::sendResponse(cli_socket, payload);
+            PlatoonServer::sendResponse(cli_socket, rspMsg.buildPayload(data));
         }
 
         //Response to leaving truck
         rspMsg.setCommand("leave_start");
-        payload = rspMsg.buildPayload(data);
-        PlatoonServer::sendResponse(leaveSocket, payload);
+        PlatoonServer::sendResponse(leaveSocket, rspMsg.buildPayload(data));
 
     } catch (const std::invalid_argument& e) {
         std::cerr << e.what() << '\n';
@@ -186,8 +185,11 @@ void TruckEventFSM::handleCommunicate(const TruckMessage& msg){
             // setEmergencyEnabled(true);
 
             // Switch to emergency state
-            AppStateMachine& appTasks = getAppTasks();
-            appTasks.switchToEmergency();
+            if(!isEmergencyEnabled()) {
+                AppStateMachine& appTasks = getAppTasks();
+                appTasks.switchToEmergency();
+                setEmergencyEnabled(true);
+            }
         } 
         //Further processing
 
@@ -209,15 +211,19 @@ void TruckEventFSM::handleExternal(const TruckMessage& msg){
     // Get command
     string command = msg.getCommand();
     
-    if (command == "test_emergency") {
+    if (command == "test_emergency_on") {
         // Switch to emergency state
         AppStateMachine& appTasks = getAppTasks();
         appTasks.switchToEmergency();
         // appTasks.switchToEmergency();
+        setEmergencyEnabled(true);
+    } else if (command == "test_emergency_off") {
+        setEmergencyEnabled(false);
     } else if (command == "test_normal") {
         // Switch to normal state
         AppStateMachine& appTasks = getAppTasks();
         appTasks.switchToNormal();
+        setEmergencyEnabled(false);
     } else {
         // Invalid command
         spdlog::error("Invalid test command: {}", command);

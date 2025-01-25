@@ -56,7 +56,7 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
                     truckMessage.setCommand("auth_ok");
                     json contents = {{"id", truck_id}};
 
-                    std::string response = truckMessage.buildPayload(contents);
+                    string response = truckMessage.buildPayload(contents);
                     send(clientSocket, response.c_str(), response.size(), 0);
 
                     continue;
@@ -215,34 +215,39 @@ void PlatoonServer::stop() {
 
 
 /* UDP */
-UdpBroadcast::UdpBroadcast(int port) : port(port) {
-    // Create UDP socket
-    socketFd = socket(AF_INET, SOCK_DGRAM, 0);
-    if (socketFd < 0) {
+void UDPBroadcastServer::initialize(uint16_t port) {
+    std::lock_guard<std::mutex> lock(broadcastMutex);
+
+    if (broadcastSocket != -1) {
+        throw std::runtime_error("UDPBroadcastServer is already initialized.");
+    }
+
+    broadcastSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (broadcastSocket < 0) {
         throw std::runtime_error("Failed to create UDP socket.");
     }
 
     int broadcastEnable = 1;
-    if (setsockopt(socketFd, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0) {
-        throw std::runtime_error("Failed to enable broadcast on socket.");
+    if (setsockopt(broadcastSocket, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0) {
+        close(broadcastSocket);
+        throw std::runtime_error("Failed to enable broadcast option.");
     }
 
-    // Configure broadcast address
-    memset(&broadcastAddr, 0, sizeof(broadcastAddr));
-    broadcastAddr.sin_family = AF_INET;
-    broadcastAddr.sin_port = htons(port);
-    broadcastAddr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    broadcastAddress.sin_family = AF_INET;
+    broadcastAddress.sin_port = htons(port);
+    broadcastAddress.sin_addr.s_addr = inet_addr("127.0.0.1");//INADDR_BROADCAST; // Broadcast address
 }
 
-UdpBroadcast::~UdpBroadcast() {
-    close(socketFd);
-}
+void UDPBroadcastServer::sendBroadcast(const std::string& message) {
+    std::lock_guard<std::mutex> lock(broadcastMutex);
 
-void UdpBroadcast::broadcastMessage(const std::string& message) {
-    if (sendto(socketFd, message.c_str(), message.size(), 0,
-               (struct sockaddr*)&broadcastAddr, sizeof(broadcastAddr)) < 0) {
-        std::cerr << "Failed to send UDP broadcast." << std::endl;
-    } else {
-        std::cout << "Broadcasted message: " << message << std::endl;
+    if (broadcastSocket == -1) {
+        throw std::runtime_error("UDPBroadcastServer is not initialized.");
     }
-}
+
+    ssize_t sentBytes = sendto(broadcastSocket, message.c_str(), message.size(), 0,
+                                (struct sockaddr*)&broadcastAddress, sizeof(broadcastAddress));
+    if (sentBytes < 0) {
+        throw std::runtime_error("Failed to send broadcast message.");
+    }
+}   

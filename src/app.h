@@ -77,6 +77,7 @@ class AppStateMachine {
         }
 
         void switchToEmergency() {
+            spdlog::warn("Switching to EMERGENCY state.");
             currentState = State::EMERGENCY;
         }
 
@@ -119,11 +120,21 @@ inline int tcp_init() {
 }
 
 inline int udp_init() {
-    int port = env_get_int("UDP_PORT", 59059);
-    json data;
-    data["message"] = "This is Platoon trucks UDP channel!";
-    auto& broadcaster = UdpBroadcast::getInstance();
-    broadcaster.broadcastMessage(to_string(data));
+    try {
+        int port = env_get_int("UDP_PORT", 59059);
+        json data;
+        data["message"] = "This is Platoon trucks UDP channel!";
+        auto& broadcastServer = UDPBroadcastServer::getInstance();
+        broadcastServer.initialize(port); // Broadcast on port 
+
+        // Broadcast a message
+        std::string message = "Emergency: Obstacle detected ahead!";
+        broadcastServer.sendBroadcast(to_string(data));
+
+        std::cout << "Broadcast message sent: " << data << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
     return 0;
 }
 
