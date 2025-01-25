@@ -106,7 +106,7 @@ bool FollowingTruck::joiningPlatoon() {
     this->truck_back_d = TRUCK_SAFE_DISTANCE;
 //    this->truck_lead_d = leading_rsp.getLeadDistance(); // [REVIEW]
     this->truck_status = "runnnig";
-    this->truck_speed = leading_rsp.getSpeed(); 
+//    this->truck_speed = leading_rsp.getSpeed(); [FIXME] 
 
     this->updateCurrentStatus();
 
@@ -336,21 +336,18 @@ void FollowingTruck::speedControl() {
             this->ref_speed = 0.0;
             if (!this->in_Emergercy) this->truck_status = "running";
         }
-    } else if (this->truck_speed > 0) { // while running
-        // 
-        if (this->getTruckStatus() == "speed_up") {
-            this->truck_speed += TRUCK_SPEED_UP_SPEED * (rand() % 10 + 95 ) / 100;
-            // maintain speed to sync with platoon system  
-            if (this->truck_speed > (ref_speed*1.15)) {
-                this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
-                this->truck_status = "running";
-                
-                this->ref_speed = 0.0;
-            }
-        } else { // normal
-          // simulate speed between [0.95*Speed, 1.15*Speed]
-          this->truck_speed = (double)this->truck_speed * (rand() % 10 + 95 ) / 100;
+    } else if (this->getTruckStatus() == "speed_up") { // speed up
+        this->truck_speed += TRUCK_SPEED_UP_SPEED * (rand() % 10 + 95 ) / 100;
+        // maintain speed to sync with platoon system  
+        if (this->truck_speed > (ref_speed*1.15)) {
+            this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
+            this->truck_status = "running";
+
+            this->ref_speed = 0.0;
         }
+    } else { // normal
+        // simulate speed between [0.95*Speed, 1.15*Speed]
+        this->truck_speed = (double)this->truck_speed * (rand() % 10 + 95 ) / 100;
     }
 
     if (this->truck_speed == 0) this->truck_status = "stopped";

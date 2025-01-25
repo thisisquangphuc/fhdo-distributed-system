@@ -65,6 +65,10 @@ bool PlatoonClient::initUDPConnection(int port, std::string host_ip, std::string
     udpServerAddr.sin_family = AF_INET;
     udpServerAddr.sin_port = htons(port);
     udpServerAddr.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
+                                                               //
+    if (bind(udpSocket, (struct sockaddr*)&udpServerAddr, sizeof(udpServerAddr)) < 0) {
+        throw std::runtime_error("Failed to bind UDP socket.");
+    }
     
 //    sendto(udpSocket, (const char *)hello, strlen(hello), 
 //        MSG_CONFIRM, (const struct sockaddr *) &udpServerAddr, sizeof(udpServerAddr)); 
@@ -122,6 +126,8 @@ std::string PlatoonClient::receiveUDPMessage() {
     int bytesReceived;
     socklen_t len;
     char buffer[1024] = {0};
+
+//    spdlog::warn("UDP message");
 
     bytesReceived = recvfrom(udpSocket, (char*)buffer, 1024, MSG_WAITALL, (struct sockaddr *) &udpServerAddr, &len);;
     buffer[bytesReceived] = '\0';

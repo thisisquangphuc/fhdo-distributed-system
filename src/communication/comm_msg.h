@@ -72,10 +72,10 @@ class TruckMessage {
         std::string getCommand() const { return payload.value("cmd", ""); }
         double getLatitude() const { return payload["contents"]["location"].value("lat", 0.0); }
         double getLongitude() const { return payload["contents"]["location"].value("lon", 0.0); }
-        int getFrontDistance() const { return payload["contents"]["distance"].value("front", 0); }
-        int getBackDistance() const { return payload["contents"]["distance"].value("back", 0); }
-        int getLeadDistance() const { return payload["contents"]["distance"].value("lead", 0); }
-        int getSpeed() const { return payload["contents"].value("speed", 0); }
+        double getFrontDistance() const { return payload["contents"]["distance"].value("front", 0.0); }
+        double getBackDistance() const { return payload["contents"]["distance"].value("back", 0.0); }
+        double getLeadDistance() const { return payload["contents"]["distance"].value("lead", 0.0); }
+        double getSpeed() const { return payload["contents"].value("speed", 0.0); }
         std::string getStatus() const { return payload["contents"].value("status", "normal"); }
         double getBrakeForce() const { return payload["contents"].value("brake_force", 0.0); }
         std::string getErrorCode() const { return payload["contents"].value("error_code", ""); }
@@ -89,12 +89,12 @@ class TruckMessage {
             outgoingPayload["contents"]["location"]["lat"] = lat;
             outgoingPayload["contents"]["location"]["lon"] = lon;
         }
-        void setDistances(int front, int back, int lead) {
+        void setDistances(double front, double back, double lead) {
             outgoingPayload["contents"]["distance"]["front"] = front;
             outgoingPayload["contents"]["distance"]["back"] = back;
             outgoingPayload["contents"]["distance"]["lead"] = lead;
         }
-        void setSpeed(int speed) { outgoingPayload["contents"]["speed"] = speed; }
+        void setSpeed(double speed) { outgoingPayload["contents"]["speed"] = speed; }
         void setStatus(const std::string& status) { outgoingPayload["contents"]["status"] = status; }
         void setBrakeForce(double brakeForce) { outgoingPayload["contents"]["brake_force"] = brakeForce; }
         void setErrorCode(const std::string& errorCode) { outgoingPayload["contents"]["error_code"] = errorCode; }
