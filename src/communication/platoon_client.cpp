@@ -7,38 +7,40 @@
 #include <arpa/inet.h>
 
 // Constructor
-PlatoonClient::PlatoonClient() : clientSocket(-1), UDPSocket(-1) {}
+PlatoonClient::PlatoonClient() : tcpSocket(-1), udpSocket(-1) {}
 
 // Destructor
 PlatoonClient::~PlatoonClient() {
-    if (clientSocket >= 0) {
-        close(clientSocket);
-        close(UDPSocket);
+    if (tcpSocket >= 0) {
+        close(tcpSocket);
+    }
+    if (udpSocket >= 0) {
+        close(udpSocket);
     }
 }
 
 // Initialize the socket connection with server
-bool PlatoonClient::initSocketConnection(int port, std::string host_ip, std::string &error_message) {
+bool PlatoonClient::initTCPConnection(int port, std::string host_ip, std::string &error_message) {
     // creating socket
-    clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    tcpSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     // specifying address
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(port);
-    serverAddress.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
+    tcpServerAddr.sin_family = AF_INET;
+    tcpServerAddr.sin_port = htons(port);
+    tcpServerAddr.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
 
     // sending connection request
-    int res = connect(clientSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
+    int res = connect(tcpSocket, (struct sockaddr*)&tcpServerAddr, sizeof(tcpServerAddr));
 
-    if (clientSocket < 0) {
-        error_message = "Failed to create socket to port " + std::to_string(port);
-        close(clientSocket);
+    if (tcpSocket < 0) {
+        error_message = "Failed to create TCP socket to port " + std::to_string(port);
+        close(tcpSocket);
         return false;
     }
 
     if (res < 0) {
         error_message = "Failed to connect to server on socket port " + std::to_string(port);
-        close(clientSocket);
+        close(tcpSocket);
         return false;
     }
 
@@ -51,38 +53,43 @@ bool PlatoonClient::initUDPConnection(int port, std::string host_ip, std::string
 //    const char *hello = "Hello from following truck.";
 
     // creating socket
-    UDPSocket = socket(AF_INET, SOCK_DGRAM, 0);
-    if (UDPSocket < 0) {
-        error_message = "Failed to create socket.";
+    udpSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (udpSocket < 0) {
+        error_message = "Failed to create UDP socket to port " + std::to_string(port);
         return false;
     }
-    memset(&serverAddress, 0, sizeof(serverAddress));
+    memset(&udpServerAddr, 0, sizeof(udpServerAddr));
 
     // specifying address
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(port);
-    serverAddress.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
+    udpServerAddr.sin_family = AF_INET;
+    udpServerAddr.sin_port = htons(port);
+    udpServerAddr.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_ANY;
     
-//    sendto(UDPSocket, (const char *)hello, strlen(hello), 
-//        MSG_CONFIRM, (const struct sockaddr *) &serverAddress, sizeof(serverAddress)); 
+//    sendto(udpSocket, (const char *)hello, strlen(hello), 
+//        MSG_CONFIRM, (const struct sockaddr *) &udpServerAddr, sizeof(udpServerAddr)); 
 
-//    error_message.clear();
+    error_message.clear();
     return true;
 }
 
 // Start connecting to the server
-bool PlatoonClient::startClient(int port, std::string host_ip, std::string &error_message) {
-    return initSocketConnection(port, host_ip, error_message);
+bool PlatoonClient::startClient(int tcp_port, int udp_port, std::string host_ip, std::string &error_message) {
+    std::string error_mess;
+    bool tcpConnection = initTCPConnection(tcp_port, host_ip, error_message);
+    bool udpConnection = initUDPConnection(udp_port, host_ip, error_mess);
+    error_message = error_message + "\n" + error_mess;
+    return (tcpConnection && udpConnection);
 }
 
 // Close socket connection with server
 void PlatoonClient::closeClientSocket() {
-    close(clientSocket);
+    close(tcpSocket);
+    close(udpSocket);
 }
 
 // 
 bool PlatoonClient::sendMessage(std::string mess, std::string &error_message) {
-    ssize_t bytesSent = send(clientSocket, mess.c_str(), mess.length(), 0);
+    ssize_t bytesSent = send(tcpSocket, mess.c_str(), mess.length(), 0);
     if (bytesSent < 0) {
         error_message = "Failed to send message: " + mess;
         return false;
@@ -95,7 +102,7 @@ std::string PlatoonClient::receiveMessage() {
     char buffer[1024] = {0};
 
     while (true) {
-        int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+        int bytesReceived = recv(tcpSocket, buffer, sizeof(buffer), 0);
         printf("[%s]-%d %s\n", __func__, bytesReceived, buffer);
 
 //        if (bytesReceived <= 0) {
@@ -111,12 +118,14 @@ std::string PlatoonClient::receiveMessage() {
 
 //
 std::string PlatoonClient::receiveUDPMessage() {
-    int n;
+    int bytesReceived;
     socklen_t len;
     char buffer[1024] = {0};
 
-    n = recvfrom(UDPSocket, (char*)buffer, 1024, MSG_WAITALL, (struct sockaddr *) &serverAddress, &len);;
-    buffer[n] = '\0';
+    bytesReceived = recvfrom(udpSocket, (char*)buffer, 1024, MSG_WAITALL, (struct sockaddr *) &udpServerAddr, &len);;
+    buffer[bytesReceived] = '\0';
+
+    printf("[%s]-%d %s\n", __func__, bytesReceived, buffer);
     
     std::string receivedMessage(buffer);
     return receivedMessage;

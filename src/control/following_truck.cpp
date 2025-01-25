@@ -27,24 +27,25 @@ bool FollowingTruck::askToJoinPlatoon() {
     spdlog::info("[{}]: {}", __func__, send_message);               
 
     this->tcp_port = env_get_int("PORT", 8080);
+    this->udp_port = env_get_int("UDP_PORT", 59059);
     this->host_ip = env_get("HOST_IP", "127.0.0.1");
 
     // Print port and host info 
-    spdlog::debug("[{}]: Port: {}", __func__, this->tcp_port);
+    spdlog::debug("[{}]: TCP-Port: {}", __func__, this->tcp_port);
+    spdlog::debug("[{}]: UDP-Port: {}", __func__, this->udp_port);
     spdlog::debug("[{}]: Host IP: {}", __func__, this->host_ip);
 
-    if (!this->platoonClient.startClient(this->tcp_port, this->host_ip, error_message)) {
+    if (!this->platoonClient.startClient(this->tcp_port, this->udp_port, this->host_ip, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
         return false;
     }
 
-    this->udp_port = env_get_int("UDP_PORT", 59059);
-    if (!this->platoonClient.initUDPConnection(this->udp_port, this->host_ip, error_message)) {
-        std::cerr << "Error conneting to server: " << error_message << std::endl;
-        this->retry_times++;
-        return false;
-    }
+//    if (!this->platoonClient.initUDPConnection(this->udp_port, this->host_ip, error_message)) {
+//        std::cerr << "Error conneting to server: " << error_message << std::endl;
+//        this->retry_times++;
+//        return false;
+//    }
 
     if (!this->platoonClient.sendMessage(send_message, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
@@ -92,7 +93,7 @@ bool FollowingTruck::joiningPlatoon() {
     TruckMessage leading_rsp(this->platoonClient.receiveMessage()); 
 
     // Receive joining result 
-    if (leading_rsp.getCommand() != "join_ok") {
+    if (leading_rsp.getCommand() != "join_accepted") {
         spdlog::info("[{}]: Joining failed.", __func__);
         this->retry_times++;
         return false;
@@ -219,8 +220,11 @@ std::string FollowingTruck::listenForLeading() {
         } else {
             leading_cmd = "";
         }
+
+        this->in_Emergercy = (leading_cmd == "emergency") ? true : false;
         return leading_cmd;
     }
+    this->in_Emergercy = false;
     return "";
 }
 
@@ -251,8 +255,10 @@ std::string FollowingTruck::listenForBroadcast() {
         } else {
             leading_cmd = "";
         }
+        this->in_Emergercy = (leading_cmd == "emergency") ? true : false;
         return leading_cmd;
     }
+    this->in_Emergercy = false;
     return "";
 }
 
