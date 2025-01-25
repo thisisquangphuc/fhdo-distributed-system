@@ -12,8 +12,9 @@
 #include <string>
 #include <map>
 #include <netinet/in.h> // For sockaddr_in
-#include "communication/platoon_server.h"
+#include <nlohmann/json.hpp>
 
+#include "communication/platoon_server.h"
 #include "utils/env.h"
 #include "utils/logger.h"
 #include "communication/comm_msg.h"
@@ -21,6 +22,7 @@
 #include "control/monitor.h"
 
 using namespace std;
+using json = nlohmann::json;
 
 class AppStateMachine {
     private:
@@ -69,6 +71,19 @@ class AppStateMachine {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
+
+        void setAppState(State state) { 
+            currentState = state;
+        }
+
+        void switchToEmergency() {
+            spdlog::warn("Switching to EMERGENCY state.");
+            currentState = State::EMERGENCY;
+        }
+
+        void switchToNormal() {
+            currentState = State::NORMAL_OPERATION;
+        }
 };
 
 void inline start_platoon_server(int port, std::string host_ip) {
@@ -104,6 +119,26 @@ inline int tcp_init() {
     return 0;
 }
 
+inline int udp_init() {
+    try {
+        int port = env_get_int("UDP_PORT", 59059);
+        json data;
+        data["message"] = "This is Platoon trucks UDP channel!";
+        auto& broadcastServer = UDPBroadcastServer::getInstance();
+        broadcastServer.initialize(port); // Broadcast on port 
+
+        // Broadcast a message
+        std::string message = "Emergency: Obstacle detected ahead!";
+        broadcastServer.sendBroadcast(to_string(data));
+
+        std::cout << "Broadcast message sent: " << data << std::endl;
+    } catch (const std::exception& e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+    return 0;
+}
+
 void system_init();
+AppStateMachine& getAppTasks();
 
 #endif

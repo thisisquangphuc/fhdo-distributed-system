@@ -14,9 +14,10 @@
 #include <condition_variable>
 #include <string>
 #include "utils/logger.h"
+#include "utils/env.h"
+#include "utils/config.h"
 #include "communication/comm_msg.h"
 #include "communication/platoon_server.h"
-#include "utils/env.h"
 #include <nlohmann/json.hpp>
 #include "control/trucks_manager.h"
 #include "control/monitor.h"
@@ -63,7 +64,7 @@ class RegularCommandQueue : public MsgQueue {
         }
 
         std::string dequeueCommand() override {
-            cout << "Popping from RegularCommandQueue" << endl;
+            // cout << "Popping from RegularCommandQueue" << endl;
             std::unique_lock<std::mutex> lock(mutex);
             cv.wait(lock, [this]() { return !queue.empty() || stopFlag; });
             if (stopFlag && queue.empty()) return "";
@@ -82,7 +83,7 @@ class EmergencyCommandQueue : public MsgQueue {
         }
 
         std::string dequeueCommand() override {
-            cout << "Popping from EmergencyCommandQueue" << endl;
+            // cout << "Popping from EmergencyCommandQueue" << endl;
             std::unique_lock<std::mutex> lock(mutex);
             cv.wait(lock, [this]() { return !queue.empty() || stopFlag; });
             if (stopFlag && queue.empty()) return "";
@@ -94,7 +95,7 @@ class EmergencyCommandQueue : public MsgQueue {
 
 class TruckEventFSM {
     public:
-        enum class State { Idle, Authen, Join, Leave, Communicate, Emergency, Obstacle };
+        enum class State { Idle, Authen, Join, Leave, Communicate, Emergency, Obstacle, External };
         std::mutex databaseMutex;
 
         TruckEventFSM() : currentState(State::Idle) {}
@@ -119,6 +120,12 @@ class TruckEventFSM {
                 case State::Emergency:
                     handleEmergency(msg);
                     break;
+                case State::Obstacle:
+                    // handleObstacle(msg); //TODO
+                    break;
+                case State::External:
+                    handleExternal(msg);
+                    break;
                 default:
                     spdlog::warn("Unhandled state");
             }
@@ -130,13 +137,15 @@ class TruckEventFSM {
 
             if (it != stateMap.end()) {
                 currentState = it->second;
-                std::cout << "State set to: " << command << std::endl;
+                // std::cout << "State set to: " << command << std::endl;
             } else {
                 throw std::invalid_argument("Invalid command name: " + command);
             }
         }
 
         bool isEmergencyEnabled() const { return emergencyEnabled; }
+        void setEmergencyEnabled(bool enabled) { emergencyEnabled = enabled; } 
+    
         
         State getState() const { return currentState; }
 
@@ -146,14 +155,18 @@ class TruckEventFSM {
 
         static const std::unordered_map<std::string, State>& getStateMap() {
             static const std::unordered_map<std::string, State> stateMap = {
-                {"Idle", State::Idle},
-                {"authen", State::Authen},
+                {"Idle", State::Idle},      //[TODO]
+                {"authen", State::Authen},  //[TODO]
                 {"join", State::Join},
+                {"join_done", State::Join},
                 {"leave", State::Leave},
-                {"communicate", State::Communicate},
-                {"state", State::Idle},
+                {"leave_done", State::Leave},
+                {"status", State::Communicate},
                 {"emergency", State::Emergency},
-                {"obstacle", State::Obstacle}
+                {"obstacle", State::Obstacle},
+                {"test_emergency_on", State::External},
+                {"test_emergency_off", State::External},
+                {"test_normal", State::External}
             };
             return stateMap;
         }
@@ -165,6 +178,7 @@ class TruckEventFSM {
         void handleLeave(const TruckMessage& msg);
         void handleCommunicate(const TruckMessage& msg);
         void handleEmergency(const TruckMessage& msg);
+        void handleExternal(const TruckMessage& msg);
         bool Auth(const TruckMessage& msg, string truckID);
 };
 

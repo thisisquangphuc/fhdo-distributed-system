@@ -39,8 +39,7 @@ class TruckMessage {
         TruckMessage(std::string payload) {
             // parse 
             if (!parsePayload(payload)) {
-                // throw error
-                throw std::runtime_error("Trucks Message:JSON Parse Error");
+                throw std::invalid_argument("Invalid payload");
             }
             truck_id = getTruckID();
         }
@@ -103,22 +102,21 @@ class TruckMessage {
         void setTimestamp(const std::string& timestamp) { outgoingPayload["timestamp"] = timestamp; }
         void setAuthenKey(const std::string& authKey) { outgoingPayload["contents"]["auth_key"] = authKey; }
         // void setTruckID(const std::string& id) { this->truck_id = id; }
+        void setContents(const nlohmann::json& contents) { outgoingPayload["contents"] = contents; }
 
         // Build payload from outgoing payload with defaults for unset fields
-        std::string buildPayload() const {
+        std::string buildPayload() {
             nlohmann::json fullPayload = defaultPayload(); // Start with defaults
-            //update truck_id to outgoing
-            // fullPayload["truck_id"] = truck_id;
             fullPayload.merge_patch(outgoingPayload);      // Merge with outgoing data
             return fullPayload.dump();
         }
 
         // Build payload from outgoing payload with contents in json
-        std::string buildPayload(const nlohmann::json& contents) const {
+        std::string buildPayload(const nlohmann::json& contents) {
             nlohmann::json fullPayload = defaultPayload();
-            // fullPayload["truck_id"] = truck_id;
+            outgoingPayload["truck_id"] = "LEADING_001";
+            outgoingPayload["contents"] = contents;
             fullPayload.merge_patch(outgoingPayload);
-            fullPayload["contents"] = contents;
             return fullPayload.dump();
         }
 

@@ -5,6 +5,7 @@
 #include <sys/ioctl.h> 
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "utils/logger.h"
 
 // Constructor
 PlatoonClient::PlatoonClient() : tcpSocket(-1), udpSocket(-1) {}
@@ -125,8 +126,8 @@ std::string PlatoonClient::receiveUDPMessage() {
     bytesReceived = recvfrom(udpSocket, (char*)buffer, 1024, MSG_WAITALL, (struct sockaddr *) &udpServerAddr, &len);;
     buffer[bytesReceived] = '\0';
 
-    printf("[%s]-%d %s\n", __func__, bytesReceived, buffer);
-    
+    // printf("[%s]-%d %s\n", __func__, bytesReceived, buffer);
     std::string receivedMessage(buffer);
+    spdlog::warn("Received UDP message: {}", receivedMessage);
     return receivedMessage;
 }

@@ -31,10 +31,24 @@ struct PlatoonData {
     std::string trafficSignal;
 };
 
+struct EmergencyEvent {
+    std::string truckID;
+    time_t timestamp;
+    std::string emergencyType;
+    double latitude;
+    double longitude;
+    double speed;
+    std::string obstacleInfo;
+    int priority; // Higher value = higher priority
+    int verificationCount; // Number of times the condition is verified
+    bool confirmed;        // True if the emergency is confirmed
+};
+
 class PlatoonDataManager {
     private:
         PlatoonData platoonData; // TruckID -> TruckData
         std::mutex dataMutex; // Mutex to ensure thread-safety
+        // EmergencyEvent emgEvents
 
         PlatoonDataManager() = default;
     public:

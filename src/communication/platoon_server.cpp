@@ -56,8 +56,9 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
                     truckMessage.setCommand("auth_ok");
                     json contents = {{"id", truck_id}};
 
-                    std::string response = truckMessage.buildPayload(contents);
+                    string response = truckMessage.buildPayload(contents);
                     send(clientSocket, response.c_str(), response.size(), 0);
+
                     continue;
 
                 } else {
@@ -84,12 +85,15 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
         catch (const nlohmann::json::exception& e)
         {
             std::cerr << "Error parsing JSON: " << e.what() << std::endl;
-            std::string response = R"({"error_code": "message_parse_error"})";
+            std::string response = R"({"error_code": "message_format_error"})";
             send(clientSocket, response.c_str(), response.size(), 0);
             continue;
-        }
-        catch(const std::exception& e)
-        {
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "Error handling truck message: " << e.what() << std::endl;
+            std::string response = R"({"error_code": "message_format_error"})";
+            send(clientSocket, response.c_str(), response.size(), 0);
+            continue;
+        } catch(const std::exception& e){
             std::cerr << "Error handling truck message: " << e.what() << std::endl;
             std::string response = R"({"error_code": "message_parse_error"})";
             send(clientSocket, response.c_str(), response.size(), 0);
@@ -208,3 +212,42 @@ void PlatoonServer::stop() {
     close(serverSocket);
     std::cout << "Server stopped.\n";
 }
+
+
+/* UDP */
+void UDPBroadcastServer::initialize(uint16_t port) {
+    std::lock_guard<std::mutex> lock(broadcastMutex);
+
+    if (broadcastSocket != -1) {
+        throw std::runtime_error("UDPBroadcastServer is already initialized.");
+    }
+
+    broadcastSocket = socket(AF_INET, SOCK_DGRAM, 0);
+    if (broadcastSocket < 0) {
+        throw std::runtime_error("Failed to create UDP socket.");
+    }
+
+    int broadcastEnable = 1;
+    if (setsockopt(broadcastSocket, SOL_SOCKET, SO_BROADCAST, &broadcastEnable, sizeof(broadcastEnable)) < 0) {
+        close(broadcastSocket);
+        throw std::runtime_error("Failed to enable broadcast option.");
+    }
+
+    broadcastAddress.sin_family = AF_INET;
+    broadcastAddress.sin_port = htons(port);
+    broadcastAddress.sin_addr.s_addr = inet_addr("127.0.0.1");//INADDR_BROADCAST; // Broadcast address
+}
+
+void UDPBroadcastServer::sendBroadcast(const std::string& message) {
+    std::lock_guard<std::mutex> lock(broadcastMutex);
+
+    if (broadcastSocket == -1) {
+        throw std::runtime_error("UDPBroadcastServer is not initialized.");
+    }
+
+    ssize_t sentBytes = sendto(broadcastSocket, message.c_str(), message.size(), 0,
+                                (struct sockaddr*)&broadcastAddress, sizeof(broadcastAddress));
+    if (sentBytes < 0) {
+        throw std::runtime_error("Failed to send broadcast message.");
+    }
+}   
