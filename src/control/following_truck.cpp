@@ -27,24 +27,25 @@ bool FollowingTruck::askToJoinPlatoon() {
     spdlog::info("[{}]: {}", __func__, send_message);               
 
     this->tcp_port = env_get_int("PORT", 8080);
+    this->udp_port = env_get_int("UDP_PORT", 59059);
     this->host_ip = env_get("HOST_IP", "127.0.0.1");
 
     // Print port and host info 
-    spdlog::debug("[{}]: Port: {}", __func__, this->tcp_port);
+    spdlog::debug("[{}]: TCP-Port: {}", __func__, this->tcp_port);
+    spdlog::debug("[{}]: UDP-Port: {}", __func__, this->udp_port);
     spdlog::debug("[{}]: Host IP: {}", __func__, this->host_ip);
 
-    if (!this->platoonClient.startClient(this->tcp_port, this->host_ip, error_message)) {
+    if (!this->platoonClient.startClient(this->tcp_port, this->udp_port, this->host_ip, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
         return false;
     }
 
-    this->udp_port = env_get_int("UDP_PORT", 59059);
-    if (!this->platoonClient.initUDPConnection(this->udp_port, this->host_ip, error_message)) {
-        std::cerr << "Error conneting to server: " << error_message << std::endl;
-        this->retry_times++;
-        return false;
-    }
+//    if (!this->platoonClient.initUDPConnection(this->udp_port, this->host_ip, error_message)) {
+//        std::cerr << "Error conneting to server: " << error_message << std::endl;
+//        this->retry_times++;
+//        return false;
+//    }
 
     if (!this->platoonClient.sendMessage(send_message, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
@@ -105,7 +106,7 @@ bool FollowingTruck::joiningPlatoon() {
     this->truck_back_d = TRUCK_SAFE_DISTANCE;
 //    this->truck_lead_d = leading_rsp.getLeadDistance(); // [REVIEW]
     this->truck_status = "runnnig";
-    this->truck_speed = leading_rsp.getSpeed(); 
+//    this->truck_speed = leading_rsp.getSpeed(); [FIXME] 
 
     this->updateCurrentStatus();
 
@@ -220,8 +221,11 @@ std::string FollowingTruck::listenForLeading() {
         } else {
             leading_cmd = "";
         }
+
+        this->in_Emergercy = (leading_cmd == "emergency") ? true : false;
         return leading_cmd;
     }
+    this->in_Emergercy = false;
     return "";
 }
 
@@ -252,8 +256,10 @@ std::string FollowingTruck::listenForBroadcast() {
         } else {
             leading_cmd = "";
         }
+        this->in_Emergercy = (leading_cmd == "emergency") ? true : false;
         return leading_cmd;
     }
+    this->in_Emergercy = false;
     return "";
 }
 
@@ -267,6 +273,7 @@ std::string FollowingTruck::listenForBroadcast() {
 void FollowingTruck::emergencyBrake() {
 //    this->brake_force *= (double)(rand() % 3 + 1); // [FIXME] increase force to accelarate stop
     if (this->brake_force >= MAX_BRAKE_FORCE) this->brake_force = MAX_BRAKE_FORCE;
+    this->in_Emergercy = true;
     this->sendCurrentStatus();
 }
 
@@ -327,22 +334,20 @@ void FollowingTruck::speedControl() {
             this->brake_force = 0.0;
 
             this->ref_speed = 0.0;
+            if (!this->in_Emergercy) this->truck_status = "running";
         }
-    } else if (this->truck_speed > 0) { // while running
-        // 
-        if (this->getTruckStatus() == "speed_up") {
-            this->truck_speed += TRUCK_SPEED_UP_SPEED * (rand() % 10 + 95 ) / 100;
-            // maintain speed to sync with platoon system  
-            if (this->truck_speed > (ref_speed*1.15)) {
-                this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
-                this->truck_status = "running";
-                
-                this->ref_speed = 0.0;
-            }
-        } else { // normal
-          // simulate speed between [0.95*Speed, 1.15*Speed]
-          this->truck_speed = (double)this->truck_speed * (rand() % 10 + 95 ) / 100;
+    } else if (this->getTruckStatus() == "speed_up") { // speed up
+        this->truck_speed += TRUCK_SPEED_UP_SPEED * (rand() % 10 + 95 ) / 100;
+        // maintain speed to sync with platoon system  
+        if (this->truck_speed > (ref_speed*1.15)) {
+            this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
+            this->truck_status = "running";
+
+            this->ref_speed = 0.0;
         }
+    } else { // normal
+        // simulate speed between [0.95*Speed, 1.15*Speed]
+        this->truck_speed = (double)this->truck_speed * (rand() % 10 + 95 ) / 100;
     }
 
     if (this->truck_speed == 0) this->truck_status = "stopped";
@@ -352,6 +357,7 @@ void FollowingTruck::speedControl() {
 void FollowingTruck::initTruck() {
     this->truck_id = "TRUCK";
     this->retry_times = 0;
+    this->in_Emergercy = false;
 
     this->truck_lat_loc = 51.4941;
     this->truck_lon_loc = 7.4204;

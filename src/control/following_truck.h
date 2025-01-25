@@ -37,6 +37,7 @@ class FollowingTruck {
         int tcp_port;
         int udp_port;
         std::string host_ip;
+        bool in_Emergercy;
 
         std::string truck_id;
         double truck_lat_loc, truck_lon_loc;
