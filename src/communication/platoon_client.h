@@ -21,7 +21,8 @@ private:
     int clientSocket;
     int UDPSocket;
     int port;
-
+    int socketFd;
+    bool isListening;
     struct sockaddr_in serverAddress;
 
     bool initSocketConnection(int port, std::string host_ip, std::string &error_message);

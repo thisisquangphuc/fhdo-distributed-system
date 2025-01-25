@@ -82,6 +82,7 @@ class AppStateMachine {
         }
 
         void switchToNormal() {
+            spdlog::warn("Switching to NORMAL_OPERATION state.");
             currentState = State::NORMAL_OPERATION;
         }
 };

@@ -19,22 +19,41 @@ PlatoonServer::~PlatoonServer() {
 
 void PlatoonServer::handleTruckSocket(int clientSocket) {
     char buffer[1024] = {0};
+    std::string rawMessage;
+    std::string body;
     bool isAuthenticated = false;
     string truck_id = "";
     while (true) {
+        // Clear rawMessage to handle subsequent messages
+        rawMessage.clear();
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
         if (bytesReceived <= 0) {
             std::cout << "Connection closed by truck.\n";
             break;
         }
 
-        std::string message(buffer, bytesReceived);
-        // std::cout << "Message from truck: " << message << std::endl;
+        // std::string message(buffer, bytesReceived);
+        // Append received data to the raw message
+        rawMessage.append(buffer, bytesReceived);
+
+        // Find the end of the headers (blank line: \r\n\r\n)
+        size_t headerEnd = rawMessage.find("\r\n\r\n");
+        if (headerEnd != std::string::npos) {
+            // Extract the body (skip the headers)
+            body = rawMessage.substr(headerEnd + 4); // +4 to skip \r\n\r\n
+
+            // Process the body
+            std::cout << "Received body: " << body << std::endl;
+        } else {
+            body = rawMessage;
+        }
+
+        std::cout << "Message from truck: " << body << std::endl;
         try
         {
-            TruckMessage truckMessage(message);
+            TruckMessage truckMessage(body);
             // Get authen key 
-            if (!isAuthenticated) {
+            if (!isAuthenticated && !truckMessage.isTesting()) {
                 if (truckMessage.getAuthenKey() == "") {
                     std::cerr << "Truck did not send authen key." << std::endl;
                     continue;
@@ -74,10 +93,10 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
             string cmd = truckMessage.getCommand();
             if (cmd == "emergency" || cmd == "obstacle") {
                 //high priority
-                emergencyQueue.enqueueCommand(message);
+                emergencyQueue.enqueueCommand(body);
             } else {
                 //low priority
-                regularQueue.enqueueCommand(message);
+                regularQueue.enqueueCommand(body);
             }
             // std::string response = truckMessage.serialize();
             // send(clientSocket, response.c_str(), response.size(), 0);

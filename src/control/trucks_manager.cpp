@@ -28,7 +28,9 @@ void TruckManager::removeTruck(const std::string& truck_id) {
         }
     }
     if (removeOrder == -1) {
-        throw std::invalid_argument("Truck ID not found.");
+        // throw std::invalid_argument("Truck ID not found.");
+        spdlog::error("Truck ID not found.");
+        return;
     }
 
     // Remove the truck
