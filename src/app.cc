@@ -51,7 +51,7 @@ void AppStateMachine::emergencyBrake() {
     // Broad cast UDP message
 
     nlohmann::json eMsg;
-    eMsg["command"] = "emergency";
+    eMsg["cmd"] = "emergency";
     eMsg["truck_id"] = "LEADING_001";
     eMsg["contents"] = json::object();
     eMsg["contents"]["brake_force"] = 0.8;
@@ -62,12 +62,12 @@ void AppStateMachine::emergencyBrake() {
     // udp.sendBroadcast(to_string(eMsg));
     auto& broadcastServer = UDPBroadcastServer::getInstance();
     // broadcastServer.initialize(59059);
-    broadcastServer.sendBroadcast("Emergency: Obstacle detected ahead!");
+    // broadcastServer.sendBroadcast("Emergency: Obstacle detected ahead!");
     broadcastServer.sendBroadcast(to_string(eMsg));
 
     //delay
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    spdlog::warn("Truck is in EMERGENCY state.");
+    spdlog::warn("Broadcasting EMERGENCY on UDP...");
 
 }
 
