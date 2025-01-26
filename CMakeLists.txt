@@ -20,6 +20,7 @@ list(REMOVE_ITEM SOURCES ${SOURCE_LEADING_TRUCK} ${SOURCE_FOLLOWING_TRUCK})
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/src/communication)
+include_directories(${CMAKE_SOURCE_DIR}/src/control)
 
 # target_include_directories(PlatoonUnitTests PUBLIC ${CMAKE_SOURCE_DIR}/src/communication)
 # target_include_directories(ThreadPool PUBLIC ${CMAKE_SOURCE_DIR}/src/utils)
