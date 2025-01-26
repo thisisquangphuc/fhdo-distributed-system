@@ -21,6 +21,7 @@ typedef enum {
 
 TruckState current_state = IDLE;
 TruckState next_state = current_state;
+TruckState prev_state = next_state;
 
 TruckState get_current_state() {
     return current_state;
@@ -34,7 +35,8 @@ TruckState get_next_state() {
 typedef enum {
     NONE,
     ASK_TO_JOIN,
-    ASK_TO_LEAVE
+    ASK_TO_LEAVE,
+    OBSTACLE_DETECT
 } TruckRequest;
 
 TruckRequest request;
@@ -52,6 +54,7 @@ LeadNoti leadingNoti;
 void* following_fsm(void* arg);
 void* simulate_request(void* arg);
 void* send_current_status(void* arg);
+void* check_obstacle(void* arg);
 void* check_lead_message(void* arg);
 void* check_broadcast_message(void* arg);
 //void* request_to_lead(void* arg);
@@ -87,6 +90,7 @@ void* following_fsm(void* arg) {
     pthread_detach(pthread_self()); 
 
     pthread_t thread_send_stats;
+    pthread_t thread_check_obstacle;
     pthread_t thread_check_lead;
     pthread_t thread_check_broadcast;
     // pthread_t thread_req_lead;
@@ -112,6 +116,7 @@ void* following_fsm(void* arg) {
                 if (followingTruck.joiningPlatoon()) { 
 
                     pthread_create(&thread_send_stats, NULL, &send_current_status, NULL);
+                    pthread_create(&thread_check_obstacle, NULL, &check_obstacle, NULL);
                     pthread_create(&thread_check_lead, NULL, &check_lead_message, NULL);
                     pthread_create(&thread_check_broadcast, NULL, &check_broadcast_message, NULL);
                     // pthread_create(&thread_req_lead, NULL, &request_to_lead, NULL);
@@ -175,6 +180,7 @@ void* following_fsm(void* arg) {
                 spdlog::debug("Wait for threads EXIT");
 
                 pthread_join(thread_send_stats, NULL); 
+                pthread_join(thread_check_obstacle, NULL); 
                 pthread_join(thread_check_lead, NULL); 
                 pthread_join(thread_check_broadcast, NULL); 
                 // pthread_join(thread_req_lead, NULL); 
@@ -196,6 +202,7 @@ void* following_fsm(void* arg) {
                 break;
         }
         current_state = next_state;
+        prev_state = current_state;
     }
     pthread_exit(NULL);
 }
@@ -204,13 +211,16 @@ void* following_fsm(void* arg) {
 void* simulate_request(void* arg) {
     pthread_detach(pthread_self()); 
 
-    int input;
+    std::string input;
     int period = env_get_int("SIMULATION_REQ_PERIOD", 1);
     while (true) {
         std::cout << "Request to server (0->Exit Program, 1->Join Platoon, 2->Leave Platoon): "; 
         std::cin >> input;
-        if (input == 0) break;
-        request = (TruckRequest)input;
+        if (input == "0") break;
+        if (input == "1") request=ASK_TO_JOIN;
+        else if (input == "2") request=ASK_TO_LEAVE;
+        else if (input == "3") request=OBSTACLE_DETECT;
+        else request = NONE;
         std::cout << "Request value: " << request << std::endl;
         sleep(period);
         request = NONE;
@@ -246,6 +256,35 @@ void* send_current_status(void* arg) {
 }
 
 //
+void* check_obstacle(void* arg) {
+    pthread_detach(pthread_self()); 
+
+    spdlog::debug("Check Obstacle");
+    // wait to change state
+    while (get_current_state() != NORMAL_OPERATION);
+    //
+    int period = env_get_int("SENSOR_STATUS_PERIOD", 1);
+    while (true) {
+        if (get_current_state() == IDLE) break;
+        if (get_current_state() != LEAVING) {
+            if ((followingTruck.obstacleAvoidance() == 2) || (request == OBSTACLE_DETECT))  {
+                while (!followingTruck.alertObstacleDetection()) { 
+                    if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
+                        spdlog::error("Connection lost with server.");
+                        break;
+                    }
+                    sleep(period);
+                }
+            }
+            sleep(period);
+        }
+    }
+    spdlog::debug("Exit check obstacle.");
+
+    pthread_exit(NULL); 
+}
+
+//
 void* check_lead_message(void* arg) {
     pthread_detach(pthread_self()); 
 
@@ -259,7 +298,7 @@ void* check_lead_message(void* arg) {
         std::string leading_mess = followingTruck.listenForLeading();
 
         if (leading_mess == "emergency")      leadingNoti = BRAKING;
-        else if (leading_mess == "slow_down")  leadingNoti = SLOWING;
+        else if (leading_mess == "slow_down") leadingNoti = SLOWING;
         else if (leading_mess == "speed_up")  leadingNoti = SPEEDING;
         else                                  leadingNoti = NORMAL;
 
@@ -284,7 +323,7 @@ void* check_broadcast_message(void* arg) {
         std::string leading_mess = followingTruck.listenForBroadcast();
 
         if (leading_mess == "emergency")      leadingNoti = BRAKING;
-        else if (leading_mess == "slow_down")  leadingNoti = SLOWING;
+        else if (leading_mess == "slow_down") leadingNoti = SLOWING;
         else if (leading_mess == "speed_up")  leadingNoti = SPEEDING;
         else                                  leadingNoti = NORMAL;
 
@@ -309,11 +348,11 @@ void* check_broadcast_message(void* arg) {
 void* emergency_brake(void* arg) {
     pthread_detach(pthread_self()); 
 
-    spdlog::debug("Emergency Brake");
     // wait to change state
     while (get_current_state() != EMERGENCY_BRAKE);
     //
     while (get_current_state() == EMERGENCY_BRAKE) { 
+        spdlog::warn("Emergency Brake");
         followingTruck.emergencyBrake();
         sleep(1);
     }

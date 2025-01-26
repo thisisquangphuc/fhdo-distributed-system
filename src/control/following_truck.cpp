@@ -58,7 +58,7 @@ bool FollowingTruck::askToJoinPlatoon() {
     spdlog::info("[{}]: Response from LEADING ... {}", __func__, leading_rsp.dump());
     // Receive authentication result 
     if (leading_rsp["cmd"] != "auth_ok") {
-        spdlog::info("[{}]: Authentication failed.", __func__);
+        spdlog::warn("[{}]: Authentication failed.", __func__);
         this->retry_times++;
         return false;
     }
@@ -95,15 +95,15 @@ bool FollowingTruck::joiningPlatoon() {
     // Receive joining result 
     spdlog::info(" Response from LEADING ... {}",leading_rsp.getCommand());
     if (leading_rsp.getCommand() != "join_accepted") {
-        spdlog::info("[{}]: Joining failed.", __func__);
+        spdlog::warn("[{}]: Joining failed.", __func__);
         this->retry_times++;
         return false;
     }
 
     // Do calculation
     spdlog::info("[{}]: {} - Calculating truck status.", __func__, this->truck_id);  
-    this->truck_front_d = TRUCK_SAFE_DISTANCE;
-    this->truck_back_d = TRUCK_SAFE_DISTANCE;
+    this->truck_front_d = TRUCK_DUMMY_DISTANCE;
+    this->truck_back_d = TRUCK_DUMMY_DISTANCE;
 //    this->truck_lead_d = leading_rsp.getLeadDistance(); // [REVIEW]
     this->truck_status = "runnnig";
 //    this->truck_speed = leading_rsp.getSpeed(); [FIXME] 
@@ -116,6 +116,28 @@ bool FollowingTruck::joiningPlatoon() {
 
     send_message = join_message.buildPayload();
     spdlog::info("[{}]: Done joining - {}", __func__, send_message);
+    if (!this->platoonClient.sendMessage(send_message, error_message)) {
+        std::cerr << "Error conneting to server: " << error_message << std::endl;
+        this->retry_times++;
+        return false;
+    }
+
+    this->resetRetryCounter();
+    return true;
+}
+
+//
+bool FollowingTruck::alertObstacleDetection() {
+    std::string send_message;
+    std::string error_message;
+    TruckMessage alert_message = this->truck_message;
+
+    // Alert the leading truck
+    alert_message.setTruckID(this->truck_id);
+    alert_message.setCommand("obstacle");
+
+    send_message = alert_message.buildPayload();
+    spdlog::info("[{}]: OBSTACLE FOUND ALERT - {}", __func__, send_message);  
     if (!this->platoonClient.sendMessage(send_message, error_message)) {
         std::cerr << "Error conneting to server: " << error_message << std::endl;
         this->retry_times++;
@@ -149,12 +171,13 @@ bool FollowingTruck::leavingPlatoon() {
 
     // Receive joining result 
     if (leading_rsp.getCommand() != "leave_start") {
-        spdlog::info("[{}]: Leaving failed.", __func__);
+        spdlog::warn("[{}]: Leaving failed.", __func__);
         this->retry_times++;
         return false;
     }
 
     // Prepare and leave the platoon
+    leave_message = this->truck_message;
     leave_message.setCommand("leave_done");
 
     send_message = leave_message.buildPayload();
@@ -180,7 +203,7 @@ bool FollowingTruck::sendCurrentStatus() {
     this->truck_message.setCommand("status");
 
     send_message = this->truck_message.buildPayload();
-    spdlog::info("[{}]: {} - Send truck status to LEADING truck - {} ", 
+    spdlog::debug("[{}]: {} - Send truck status to LEADING truck - {} ", 
             __func__, 
             this->truck_id, 
             send_message);
@@ -199,7 +222,7 @@ std::string FollowingTruck::listenForLeading() {
     std::string leading_rsp;
     std::string error_message;
 
-    spdlog::debug("[{}]: {} - Listening for LEADING Truck ... ", __func__, this->truck_id);
+    spdlog::info("[{}]: {} - Listening for LEADING Truck ... ", __func__, this->truck_id);
     leading_rsp = this->platoonClient.receiveMessage();
     
     if (!leading_rsp.empty()) {
@@ -234,7 +257,7 @@ std::string FollowingTruck::listenForBroadcast() {
     std::string leading_rsp;
     std::string error_message;
 
-    spdlog::debug("[{}]: {} - Listening for Broadcast ... ", __func__, this->truck_id);
+    spdlog::info("[{}]: {} - Listening for Broadcast ... ", __func__, this->truck_id);
     leading_rsp = this->platoonClient.receiveUDPMessage();
 
     if (!leading_rsp.empty()) {
@@ -297,9 +320,9 @@ void FollowingTruck::updateCurrentStatus() {
 void FollowingTruck::monitorDistance() {
     if (this->truck_speed > 0) {
         // simulate distance between [0.95*Distance, 1.15*Distance]
-        this->truck_front_d = (double)TRUCK_SAFE_DISTANCE * (rand() % 10 + 95) / 100;  
+        this->truck_front_d = (double)TRUCK_DUMMY_DISTANCE * (rand() % 10 + 95) / 100;  
 //        if (this->truck_back_d != 0.0) // not the last truck in platoon
-        this->truck_back_d = (double)TRUCK_SAFE_DISTANCE * (rand() % 10 + 95) / 100;
+        this->truck_back_d = (double)TRUCK_DUMMY_DISTANCE * (rand() % 10 + 95) / 100;
     }
 }
 
@@ -351,6 +374,17 @@ void FollowingTruck::speedControl() {
     }
 
     if (this->truck_speed == 0) this->truck_status = "stopped";
+}
+
+//
+int FollowingTruck::obstacleAvoidance() {
+    int result;
+
+    if ((rand() % (100/env_get_int("OBSTACLE_ALERT_CHANCE", 10))) == 0) result = 2;
+    else result = rand() % 2;
+    spdlog::debug("Obstacle Detection - {}", result);
+
+    return result;
 }
 
 //

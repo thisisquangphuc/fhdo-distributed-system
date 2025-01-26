@@ -26,6 +26,8 @@ class FollowingTruck {
         std::string listenForLeading();
         std::string listenForBroadcast();
         void emergencyBrake();
+        int obstacleAvoidance();
+        bool alertObstacleDetection();
 //        void startBraking();
         int getRetryTimes();
         void resetRetryCounter();
