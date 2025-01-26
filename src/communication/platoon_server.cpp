@@ -257,6 +257,15 @@ void UDPBroadcastServer::initialize(uint16_t port) {
     broadcastAddress.sin_addr.s_addr = inet_addr("127.0.0.1");//INADDR_BROADCAST; // Broadcast address
 }
 
+std::string PlatoonServer::generateTruckID() {
+    // Generate a unique Truck ID
+    uuid_t uuid;
+    char uuidStr[37];
+    uuid_generate(uuid);
+    uuid_unparse(uuid, uuidStr);
+    return std::string("TR00") + std::string(uuidStr);
+}
+
 void UDPBroadcastServer::sendBroadcast(const std::string& message) {
     std::lock_guard<std::mutex> lock(broadcastMutex);
 
