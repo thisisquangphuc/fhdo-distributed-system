@@ -190,6 +190,7 @@ bool FollowingTruck::leavingPlatoon() {
     
     this->platoonClient.closeClientSocket();
     this->resetRetryCounter();
+    this->initTruck();
     return true;
 }
 
@@ -345,11 +346,11 @@ void FollowingTruck::monitorLocation() {
 void FollowingTruck::speedControl() {
     // When having brake
     if ((this->brake_force > 0) && (this->truck_speed > 0)) { // brake_force and truck is running 
-        if (this->truck_speed > (ref_speed*0.95)) {
+        if (this->truck_speed > (ref_speed*0.98)) {
           this->truck_speed -= (double)TRUCK_BRAKE_SPEED*this->brake_force;  
         }
         // maintain speed to sync with platoon system  
-        if (this->truck_speed < (ref_speed*0.95)) {
+        if (this->truck_speed < (ref_speed*0.98)) {
 //            if (this->truck_speed <= 0) this->truck_speed = 0; 
             this->truck_speed = (double)this->ref_speed * (rand() % 4 + 98 ) / 100;
 
@@ -361,8 +362,8 @@ void FollowingTruck::speedControl() {
     } else if (this->getTruckStatus() == "speed_up") { // speed up
         this->truck_speed += TRUCK_SPEED_UP_SPEED * (rand() % 10 + 95 ) / 100;
         // maintain speed to sync with platoon system  
-        if (this->truck_speed > (ref_speed*1.15)) {
-            this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
+        if (this->truck_speed > (ref_speed*1.02)) {
+            this->truck_speed = (double)this->ref_speed * (rand() % 4 + 98 ) / 100;
             this->truck_status = "running";
 
             this->ref_speed = 0.0;
