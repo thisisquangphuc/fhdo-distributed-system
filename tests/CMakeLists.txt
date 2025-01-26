@@ -22,16 +22,27 @@ find_package(OpenSSL REQUIRED)
 # Add your test executable
 add_executable(PlatoonUnitTests command_test.cpp)
 
+set(SERVER_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/communication/platoon_server.cpp
+    ${CMAKE_SOURCE_DIR}/src/control/trucks_manager.cpp
+    ${CMAKE_SOURCE_DIR}/src/control/event_manager.cpp
+    ${CMAKE_SOURCE_DIR}/src/control/monitor.cpp
+    ${CMAKE_SOURCE_DIR}/src/app.cc
+    ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
+    # Add other related source files if necessary
+)
+
 # Link  project libraries
 target_include_directories(PlatoonUnitTests PRIVATE 
     ${CMAKE_SOURCE_DIR}/../src
 )
 
-target_include_directories(PlatoonUnitTests PUBLIC ${CMAKE_SOURCE_DIR}/src/communication)
+target_include_directories(PlatoonUnitTests PUBLIC ${CMAKE_SOURCE_DIR}/src)
 
 # Print CMAKE_SOURCE_DIR
 message(STATUS "CMAKE_SOURCE_DIR: ${CMAKE_SOURCE_DIR}")
 
+target_sources(PlatoonUnitTests PRIVATE ${SERVER_SOURCES})
 # Link Google Test libraries and pthread
 target_link_libraries(PlatoonUnitTests PRIVATE
     GTest::gtest 
