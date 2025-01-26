@@ -222,7 +222,7 @@ void* simulate_request(void* arg) {
     std::string input;
     int period = env_get_int("SIMULATION_REQ_PERIOD", 1);
     while (true) {
-        std::cout << "Request to server (0->Exit Program, 1->Join Platoon, 2->Leave Platoon): "; 
+        std::cout << "Request to server (0->Exit Program, 1->Join Platoon, 2->Leave Platoon, 3->Obstacle Detection): "; 
         std::cin >> input;
         if (input == "0") break;
         if (input == "1") request=ASK_TO_JOIN;

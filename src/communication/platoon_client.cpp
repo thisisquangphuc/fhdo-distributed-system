@@ -113,7 +113,7 @@ std::string PlatoonClient::receiveTCPMessage() {
 
 //        if (bytesReceived <= 0) {
 //          std::cout << "Connection is closed.";
-//          break;
+//          return "closed";
 //        }
 
         std::string receivedMessage(buffer, bytesReceived);
