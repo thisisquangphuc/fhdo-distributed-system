@@ -54,7 +54,7 @@ bool FollowingTruck::askToJoinPlatoon() {
     }
 
     // 
-    json leading_rsp = json::parse(this->platoonClient.receiveMessage()); 
+    json leading_rsp = json::parse(this->platoonClient.receiveTCPMessage()); 
     spdlog::info("[{}]: Response from LEADING ... {}", __func__, leading_rsp.dump());
     // Receive authentication result 
     if (leading_rsp["cmd"] != "auth_ok") {
@@ -90,7 +90,7 @@ bool FollowingTruck::joiningPlatoon() {
 
     // Receive truck info 
     spdlog::info("[{}]: Receive truck info from LEADING ... ", __func__);
-    TruckMessage leading_rsp(this->platoonClient.receiveMessage()); 
+    TruckMessage leading_rsp(this->platoonClient.receiveTCPMessage()); 
 
     // Receive joining result 
     spdlog::info(" Response from LEADING ... {}",leading_rsp.getCommand());
@@ -104,9 +104,9 @@ bool FollowingTruck::joiningPlatoon() {
     spdlog::info("[{}]: {} - Calculating truck status.", __func__, this->truck_id);  
     this->truck_front_d = TRUCK_DUMMY_DISTANCE;
     this->truck_back_d = TRUCK_DUMMY_DISTANCE;
-//    this->truck_lead_d = leading_rsp.getLeadDistance(); // [REVIEW]
+    this->truck_lead_d = leading_rsp.getLeadDistance(); 
+    this->truck_speed = leading_rsp.getSpeed(); 
     this->truck_status = "runnnig";
-//    this->truck_speed = leading_rsp.getSpeed(); [FIXME] 
 
     this->updateCurrentStatus();
 
@@ -167,7 +167,7 @@ bool FollowingTruck::leavingPlatoon() {
 
     // Approval from leading 
     spdlog::info("[{}]: {} - Waiting for approval from LEADING Truck ... ", __func__, this->truck_id);
-    TruckMessage leading_rsp(this->platoonClient.receiveMessage());
+    TruckMessage leading_rsp(this->platoonClient.receiveTCPMessage());
 
     // Receive joining result 
     if (leading_rsp.getCommand() != "leave_start") {
@@ -223,7 +223,7 @@ std::string FollowingTruck::listenForLeading() {
     std::string error_message;
 
     spdlog::info("[{}]: {} - Listening for LEADING Truck ... ", __func__, this->truck_id);
-    leading_rsp = this->platoonClient.receiveMessage();
+    leading_rsp = this->platoonClient.receiveTCPMessage();
     
     if (!leading_rsp.empty()) {
         json leading_mess = json::parse(leading_rsp);
@@ -306,6 +306,7 @@ void FollowingTruck::updateCurrentStatus() {
     spdlog::debug("[{}]: {} - Update truck status.", __func__, this->truck_id);
 
     this->monitorDistance();
+    this->monitorLocation();
     this->speedControl();
 
     this->truck_message.setLocation(this->truck_lat_loc, this->truck_lon_loc);
@@ -319,7 +320,7 @@ void FollowingTruck::updateCurrentStatus() {
 //
 void FollowingTruck::monitorDistance() {
     if (this->truck_speed > 0) {
-        // simulate distance between [0.95*Distance, 1.15*Distance]
+        // simulate distance between [0.95*Distance, 1.05*Distance]
         this->truck_front_d = (double)TRUCK_DUMMY_DISTANCE * (rand() % 10 + 95) / 100;  
 //        if (this->truck_back_d != 0.0) // not the last truck in platoon
         this->truck_back_d = (double)TRUCK_DUMMY_DISTANCE * (rand() % 10 + 95) / 100;
@@ -331,32 +332,30 @@ void FollowingTruck::monitorLocation() {
     if (this->truck_speed > 0) {    
         // simulate location 
         this->truck_lat_loc = (rand() % 2) ? 
-            (this->truck_lat_loc + ((rand() % 20)/ 1000)) : 
-            (this->truck_lat_loc - ((rand() % 20) / 1000));
+            (this->truck_lat_loc + ((double)(rand() % 20)/ 1000)) : 
+            (this->truck_lat_loc - ((double)(rand() % 20) / 1000));
 
         this->truck_lon_loc = (rand() % 2) ? 
-            (this->truck_lon_loc + ((rand() % 20)/ 1000)) : 
-            (this->truck_lon_loc - ((rand() % 20) / 1000));
-    }}
+            (this->truck_lon_loc + ((double)(rand() % 20)/ 1000)) : 
+            (this->truck_lon_loc - ((double)(rand() % 20) / 1000));
+    }
+}
 
 //
 void FollowingTruck::speedControl() {
     // When having brake
     if ((this->brake_force > 0) && (this->truck_speed > 0)) { // brake_force and truck is running 
-        this->truck_speed -= (double)TRUCK_BRAKE_SPEED*this->brake_force;  
-        //
-        if (this->truck_speed <= 0) { 
-            this->brake_force = 0.0;
-            this->truck_speed = 0.0; 
-
-            this->ref_speed = 0.0;
+        if (this->truck_speed > (ref_speed*0.95)) {
+          this->truck_speed -= (double)TRUCK_BRAKE_SPEED*this->brake_force;  
         }
         // maintain speed to sync with platoon system  
         if (this->truck_speed < (ref_speed*0.95)) {
-            this->truck_speed = (double)this->ref_speed * (rand() % 10 + 95 ) / 100;
-            this->brake_force = 0.0;
+//            if (this->truck_speed <= 0) this->truck_speed = 0; 
+            this->truck_speed = (double)this->ref_speed * (rand() % 4 + 98 ) / 100;
 
+            this->brake_force = 0.0;
             this->ref_speed = 0.0;
+
             if (!this->in_Emergercy) this->truck_status = "running";
         }
     } else if (this->getTruckStatus() == "speed_up") { // speed up
@@ -369,8 +368,8 @@ void FollowingTruck::speedControl() {
             this->ref_speed = 0.0;
         }
     } else { // normal
-        // simulate speed between [0.95*Speed, 1.15*Speed]
-        this->truck_speed = (double)this->truck_speed * (rand() % 10 + 95 ) / 100;
+        // simulate speed between [0.98*Speed, 1.02*Speed]
+        this->truck_speed = (double)this->truck_speed * (rand() % 4 + 98 ) / 100;
     }
 
     if (this->truck_speed == 0) this->truck_status = "stopped";
@@ -380,7 +379,7 @@ void FollowingTruck::speedControl() {
 int FollowingTruck::obstacleAvoidance() {
     int result;
 
-    if ((rand() % (100/env_get_int("OBSTACLE_ALERT_CHANCE", 10))) == 0) result = 2;
+    if ((rand() % (100/OBSTACLE_ALERT_CHANCE)) == 1) result = 2;
     else result = rand() % 2;
     spdlog::debug("Obstacle Detection - {}", result);
 

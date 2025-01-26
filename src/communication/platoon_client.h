@@ -13,7 +13,7 @@ public:
     void closeClientSocket();
     void setAuthToken(std::string key);
     bool sendMessage(std::string mess, std::string &error_message);
-    std::string receiveMessage();
+    std::string receiveTCPMessage();
     std::string receiveUDPMessage();
 
 private:
