@@ -57,7 +57,6 @@ void* send_current_status(void* arg);
 void* check_obstacle(void* arg);
 void* check_lead_message(void* arg);
 void* check_broadcast_message(void* arg);
-//void* request_to_lead(void* arg);
 void* emergency_brake(void* arg);
 void load_environment(std::string env_file);
 
@@ -109,6 +108,7 @@ void* following_fsm(void* arg) {
                     }
                     sleep(period);
                 } 
+                prev_state = IDLE; 
                 break;
             //}
             case JOINING: //{
@@ -129,7 +129,7 @@ void* following_fsm(void* arg) {
                 break;
             //}
             case NORMAL_OPERATION: //{
-
+                                   
                 if (request == ASK_TO_LEAVE) {
                     spdlog::info("Send leaving request.");
                     next_state = LEAVING;
@@ -151,18 +151,22 @@ void* following_fsm(void* arg) {
                     spdlog::info("Receive speeding up from LEADING truck.");
                     next_state = SPEED_UP;
                 }
+
+                prev_state = current_state;
                 break;
             //}
             case SPEED_UP: //{
                 if (followingTruck.getTruckStatus() != "speed_up") {
                     next_state = NORMAL_OPERATION;
                 }
+                prev_state = current_state;
                 break;
             //}
             case SLOW_DOWN: //{
                 if (followingTruck.getTruckStatus() != "slow_down") {
                     next_state = NORMAL_OPERATION;
                 }
+                prev_state = current_state;
                 break;
             //}
             case EMERGENCY_BRAKE: //{
@@ -170,10 +174,14 @@ void* following_fsm(void* arg) {
                     pthread_join(thread_emg_brake, NULL);
                     next_state = NORMAL_OPERATION;
                 }
-                
+                prev_state = current_state;
                 break;
             //}
             case CONNECTION_LOST: //{
+                if (followingTruck.sendCurrentStatus()) {
+                    followingTruck.resetRetryCounter();
+                    next_state = prev_state;
+                }
                 break;  
             //}
             case LEAVING: //{
@@ -195,6 +203,7 @@ void* following_fsm(void* arg) {
                     followingTruck.resetRetryCounter();
                     next_state = NORMAL_OPERATION;
                 }
+                prev_state = current_state;
                 break;
             //}
             default:
@@ -202,7 +211,6 @@ void* following_fsm(void* arg) {
                 break;
         }
         current_state = next_state;
-        prev_state = current_state;
     }
     pthread_exit(NULL);
 }
@@ -240,12 +248,13 @@ void* send_current_status(void* arg) {
     int period = env_get_int("SEND_STATUS_PERIOD", 2);
     while (true) {
         if (get_current_state() == IDLE) break;
-        if (get_current_state() != LEAVING) {
+        if ((get_current_state() != LEAVING) && (get_current_state() != CONNECTION_LOST)) {
             if (!followingTruck.sendCurrentStatus()) {
                 spdlog::warn("Failed to send current status to server.");
             }
             if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
-                spdlog::error("Connection lost with server.");
+                spdlog::warn("Connection lost with server.");
+                next_state = CONNECTION_LOST;
             }
         }
         sleep(period); 
@@ -266,11 +275,12 @@ void* check_obstacle(void* arg) {
     int period = env_get_int("SENSOR_STATUS_PERIOD", 1);
     while (true) {
         if (get_current_state() == IDLE) break;
-        if (get_current_state() != LEAVING) {
+        if ((get_current_state() != LEAVING) && (get_current_state() != CONNECTION_LOST)) {
             if ((followingTruck.obstacleAvoidance() == 2) || (request == OBSTACLE_DETECT))  {
                 while (!followingTruck.alertObstacleDetection()) { 
                     if (followingTruck.getRetryTimes() >= MAX_RESEND_MESS) {
                         spdlog::error("Connection lost with server.");
+                        next_state = CONNECTION_LOST;
                         break;
                     }
                     sleep(period);
@@ -333,16 +343,6 @@ void* check_broadcast_message(void* arg) {
 
     pthread_exit(NULL); 
 }
-
-////
-//void* request_to_lead(void* arg) { 
-//    pthread_detach(pthread_self());
-//
-//    spdlog::debug("Send request to LEADING");
-//    while (get_current_state() == NORMAL_OPERATION);
-//
-//    pthread_exit(NULL);
-//}
 
 //
 void* emergency_brake(void* arg) {
