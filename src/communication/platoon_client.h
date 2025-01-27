@@ -11,9 +11,9 @@ public:
 
     bool startClient(int tcp_port, int udp_port, std::string host_ip, std::string &error_message);
     void closeClientSocket();
-    void setAuthToken(std::string key);
+//    void setAuthToken(std::string key);
     bool sendMessage(std::string mess, std::string &error_message);
-    std::string receiveMessage();
+    std::string receiveTCPMessage();
     std::string receiveUDPMessage();
 
 private:

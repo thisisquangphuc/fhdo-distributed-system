@@ -2,6 +2,7 @@
 /build/
 /tests/build/
 /bin/
+/tests/build/
 /CMakeFiles/
 /CMakeCache.txt
 /Debian/

@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
+//#include <gmock/gmock.h>
 #include "../src/communication/platoon_server.h"
 #include "../src/control/trucks_manager.h"
 #include "../src/control/event_manager.h"
