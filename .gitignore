@@ -1,6 +1,7 @@
 # Build directories
 /build/
 /bin/
+/tests/build/
 /CMakeFiles/
 /CMakeCache.txt
 /Debian/
