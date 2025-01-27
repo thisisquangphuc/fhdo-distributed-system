@@ -23,6 +23,7 @@ class FollowingTruck {
         bool joiningPlatoon();
         bool leavingPlatoon();
         bool sendCurrentStatus();
+        void updateCurrentStatus();
         std::string listenForLeading();
         std::string listenForBroadcast();
         bool emergencyBrake();
@@ -33,11 +34,19 @@ class FollowingTruck {
         std::string processCommands(std::string leading_rsp);
 
         // setters
+        void setTruckID(std::string id) { this->truck_id = id; }
+        void setTruckStatus(std::string status) { this->truck_status = status; }
+        void setTruckFrontDistance(double distance) { this->truck_front_d = distance; }
+        void setTruckBackDistance(double distance) { this->truck_back_d = distance; }
+        void setTruckLeadDistance(double distance) { this->truck_lead_d = distance; }
+        void setTruckLatLoc(double loc) { this->truck_lat_loc = loc; }
+        void setTruckLonLoc(double loc) { this->truck_lon_loc = loc; }
         void setTruckSpeed(double speed) { this->truck_speed = speed; }
         void setRefSpeed(double speed) { this->ref_speed = speed; }
         void setBrakeForce(double brake_value) { this->brake_force = brake_value; }
         
         // getters
+        TruckMessage getTruckMessage() { return this->truck_message; }
         std::string getTruckStatus() { return this->truck_status; }
         double getRefSpeed() { return this->ref_speed; }
         double getTruckSpeed() { return this->truck_speed; }
@@ -74,7 +83,6 @@ class FollowingTruck {
         PlatoonClient platoonClient;
 
         void initTruck();
-        void updateCurrentStatus();
         void monitorDistance();
         void monitorLocation();
         void speedControl();

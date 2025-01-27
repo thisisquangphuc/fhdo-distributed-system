@@ -34,6 +34,43 @@ TEST(FollowingTruckTest, ProcessCommandFromLeading) {
 }
 
 
+//
+TEST(FollowingTruckTest, TruckInit) {
+    FollowingTruck followingTruck;
+
+    EXPECT_DOUBLE_EQ(followingTruck.getBrakeForce(), 0.0);
+    EXPECT_DOUBLE_EQ(followingTruck.getRefSpeed(), 0.0);
+    EXPECT_GE(followingTruck.getTruckSpeed(), 60.0*0.98);
+    EXPECT_LE(followingTruck.getTruckSpeed(), 60.0*1.12);
+    EXPECT_DOUBLE_EQ(followingTruck.getTruckLeadDistance(), 0.0);
+}
+
+//
+//TEST(FollowingTruckTest, UpdateTruckMessage) {
+//    FollowingTruck followingTruck;
+//
+//    followingTruck.setTruckID("TRUCK_0001");
+//    followingTruck.setTruckSpeed(0.0);
+//    followingTruck.setTruckFrontDistance(2.0);
+//    followingTruck.setTruckBackDistance(2.1);
+//    followingTruck.setTruckLeadDistance(2.2);
+//    followingTruck.setTruckLatLoc(51.5918);
+//    followingTruck.setTruckLonLoc(7.3421);
+//
+//    followingTruck.updateCurrentStatus();
+//
+//    TruckMessage truck_message = followingTruck.getTruckMessage();
+//    spdlog::info("{}", truck_message.buildPayload());
+//    
+//
+//    EXPECT_DOUBLE_EQ(truck_message.getFrontDistance(), 2.0);
+////    EXPECT_DOUBLE_EQ(truck_message.getBackDistance(), 2.1);
+////    EXPECT_DOUBLE_EQ(truck_message.getLeadDistance(), 2.2);
+////    EXPECT_DOUBLE_EQ(truck_message.getLatitude(), 51.5918);
+////    EXPECT_DOUBLE_EQ(truck_message.getLongitude(), 7.3421);
+//}
+
+//
 TEST(FollowingTruckTest, TruckSpeedControlWhenBraking) {
     FollowingTruck followingTruck;
   
@@ -41,8 +78,8 @@ TEST(FollowingTruckTest, TruckSpeedControlWhenBraking) {
     followingTruck.setRefSpeed(10.0);	
     followingTruck.setBrakeForce(0.8);
 
-    followingTruck.sendCurrentStatus();
-    followingTruck.sendCurrentStatus();
+    followingTruck.updateCurrentStatus();
+    followingTruck.updateCurrentStatus();
 
     EXPECT_DOUBLE_EQ(followingTruck.getBrakeForce(), 0.0);
     EXPECT_DOUBLE_EQ(followingTruck.getRefSpeed(), 0.0);
@@ -51,19 +88,8 @@ TEST(FollowingTruckTest, TruckSpeedControlWhenBraking) {
 }
 
 
-TEST(FOllowingTruckTest, RetryCounterWhenNoConnection) {
-    FollowingTruck followingTruck;
 
-    EXPECT_FALSE(followingTruck.askToJoinPlatoon());
-    EXPECT_FALSE(followingTruck.joiningPlatoon());
-    EXPECT_FALSE(followingTruck.leavingPlatoon());
-    EXPECT_EQ(followingTruck.getRetryTimes(), 3);
-
-    followingTruck.resetRetryCounter();
-    EXPECT_EQ(followingTruck.getRetryTimes(), 0);
-}
-
-
+//
 //
 TEST(CommandDefectTest, CommandParseInvalid) {
     FollowingTruck followingTruck;
@@ -76,6 +102,20 @@ TEST(CommandDefectTest, CommandParseInvalid) {
     };
 
     EXPECT_THROW(followingTruck.processCommands(cmd), nlohmann::json::exception);
+}
+
+//
+//
+TEST(FOllowingTruckTest, SendRequestWhenNoConnection) {
+    FollowingTruck followingTruck;
+
+    EXPECT_FALSE(followingTruck.askToJoinPlatoon());
+    EXPECT_FALSE(followingTruck.joiningPlatoon());
+    EXPECT_FALSE(followingTruck.leavingPlatoon());
+    EXPECT_EQ(followingTruck.getRetryTimes(), 3);
+
+    followingTruck.resetRetryCounter();
+    EXPECT_EQ(followingTruck.getRetryTimes(), 0);
 }
 
 
