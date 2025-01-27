@@ -6,13 +6,10 @@
 #include "../src/communication/platoon_client.h"
 #include "../src/communication/platoon_server.h"
 #include "../src/control/following_truck.h"
-#include "../src/utils/env.h"
 #include "../src/utils/config.h"
-#include "../src/app.h"
-#include "../control/event_manager.h"
 
 // 
-TEST(FollowingTruckTest, ProcessCommandFromLeading) {
+TEST(FollowingTruckTest, GetCommandFromLeading) {
     FollowingTruck followingTruck;
 
     json cmd = {
