@@ -20,12 +20,14 @@ find_package(nlohmann_json REQUIRED)
 find_package(OpenSSL REQUIRED)
 
 # Add your test executable
-add_executable(PlatoonUnitTests command_test.cpp)
+add_executable(PlatoonUnitTests command_test.cpp following_test.cpp)
 
 set(SERVER_SOURCES
     ${CMAKE_SOURCE_DIR}/src/communication/platoon_server.cpp
+    ${CMAKE_SOURCE_DIR}/src/communication/platoon_client.cpp
     ${CMAKE_SOURCE_DIR}/src/control/trucks_manager.cpp
     ${CMAKE_SOURCE_DIR}/src/control/event_manager.cpp
+    ${CMAKE_SOURCE_DIR}/src/control/following_truck.cpp
     ${CMAKE_SOURCE_DIR}/src/control/monitor.cpp
     ${CMAKE_SOURCE_DIR}/src/app.cc
     ${CMAKE_SOURCE_DIR}/src/utils/logger.cpp
