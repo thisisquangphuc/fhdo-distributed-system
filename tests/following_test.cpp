@@ -103,7 +103,7 @@ TEST(CommandDefectTest, CommandParseInvalid) {
 
 //
 //
-TEST(FOllowingTruckTest, SendRequestWhenNoConnection) {
+TEST(FollowingDefectTest, SendRequestWhenNoConnection) {
     FollowingTruck followingTruck;
 
     EXPECT_FALSE(followingTruck.askToJoinPlatoon());
@@ -135,7 +135,7 @@ TEST(PlatoonConnectionTest, CreateSocket) {
     EXPECT_EQ(error_message, "\n");
 }
 
-int main() {
-    testing::InitGoogleTest();
-    return RUN_ALL_TESTS();
-}
+//int main() {
+//    testing::InitGoogleTest();
+//    return RUN_ALL_TESTS();
+//}
