@@ -123,6 +123,66 @@ TEST(TruckEventFSMTest, HandleInvalidCommandInHandleEvent) {
 
 // Test 5:
 
+
+/******************************************************************************************/
+/* Define and execute 3 component / interface tests of the implemented block diagram */
+/******************************************************************************************/
+
+//Test 1: TruckManager - Add and Remove Truck
+TEST(TruckManagerTest, AddAndRemoveTruck) {
+    auto& manager = TruckManager::getInstance();
+
+    // Get current number of trucks
+    auto trucks = manager.getTrucks();
+    int initialNumTrucks = trucks.size();
+
+    // Add trucks
+    manager.addTruck("Truck1", 101);
+    manager.addTruck("Truck2", 102);
+
+    // Verify trucks were added
+    trucks = manager.getTrucks();
+    int expectedNumTrucks = initialNumTrucks + 2;
+    EXPECT_EQ(trucks.size(), expectedNumTrucks);
+
+    // Remove a truck
+    manager.removeTruck("Truck1");
+
+    // Verify truck removal
+    trucks = manager.getTrucks();
+    EXPECT_EQ(trucks.size(), initialNumTrucks + 1);
+}
+
+//Test 2: PlatoonServer - Authentication and Joining
+TEST(PlatoonServerTest, AuthenticateAndJoinTruckWithUpdatedCommandFormat) {
+    auto& manager = TruckManager::getInstance();
+    PlatoonServer server(8080);
+    auto trucks = manager.getTrucks();
+    std::string generatedTruckID = server.generateTruckID();
+    // Step 2: Construct the join command in JSON format
+
+    manager.addTruck(generatedTruckID, 101);
+
+    nlohmann::json joinCommand = {
+        {"truck_id", generatedTruckID},
+        {"cmd", "join"},
+        {"contents", {}},
+        {"msg_id", "unique_message_id_12345"},
+        {"timestamp", "52451245"}
+    };
+
+    // Convert the JSON object to a string for transmission
+    std::string joinMessage = joinCommand.dump();
+
+    // Step 3: Pass the join message to the join handler
+    TruckEventFSM truckEventFSM;
+    bool result = truckEventFSM.handleJoin(TruckMessage(joinMessage));
+
+    // Step 4: Verify that the TruckManager successfully stores the truck ID
+    EXPECT_TRUE(result);
+
+}
+
 /******************************************************************************************/
 /* Implement a component/block in a test driven development (TDD) approach */
 /******************************************************************************************/
@@ -140,7 +200,7 @@ TEST(TruckEventFSMTest, HandleInvalidCommandInHandleEvent) {
 * - Verify the result
 * - Refactor code
 * - Repeat
-*
+*/
 /******************************************************************************************/
 
 

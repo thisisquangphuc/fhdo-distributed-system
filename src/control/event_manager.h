@@ -145,7 +145,7 @@ class TruckEventFSM {
 
         bool isEmergencyEnabled() const { return emergencyEnabled; }
         void setEmergencyEnabled(bool enabled) { emergencyEnabled = enabled; } 
-    
+        static bool handleJoin(const TruckMessage& msg);
         
         State getState() const { return currentState; }
 
@@ -174,7 +174,7 @@ class TruckEventFSM {
         // void setState(State newState) { currentState = newState; }
 
         void handleIdle(const TruckMessage& msg);
-        void handleJoin(const TruckMessage& msg);
+        // static bool handleJoin(const TruckMessage& msg);
         void handleLeave(const TruckMessage& msg);
         void handleCommunicate(const TruckMessage& msg);
         void handleEmergency(const TruckMessage& msg);

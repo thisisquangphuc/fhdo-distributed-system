@@ -36,7 +36,8 @@ void processCommands(MsgQueue& queue, TruckEventFSM& stateMachine) {
 void TruckEventFSM::handleIdle(const TruckMessage& msg){
     // 
 }
-void TruckEventFSM::handleJoin(const TruckMessage& msg){
+
+bool TruckEventFSM::handleJoin(const TruckMessage& msg){
     spdlog::info("Process join request ...");
     int cli_socket = -1;
     try
@@ -52,7 +53,7 @@ void TruckEventFSM::handleJoin(const TruckMessage& msg){
             // No available slot
             json error = {{"error", "No available slot"}};
             PlatoonServer::sendResponse(cli_socket, error);
-            return;
+            return false;
         }
 
         // Send synchronization data such as location and speed, etc.
@@ -71,9 +72,13 @@ void TruckEventFSM::handleJoin(const TruckMessage& msg){
         //send error response
         json error = {{"error", "Truck ID not found"}};
         PlatoonServer::sendResponse(cli_socket, error);
+        return false;
     } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
+        spdlog::error("Error processing join request.");
+        return false;
     }
+    return true;
 }
 
 void TruckEventFSM::handleLeave(const TruckMessage& msg){
