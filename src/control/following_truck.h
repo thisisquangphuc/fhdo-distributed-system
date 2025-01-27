@@ -25,16 +25,34 @@ class FollowingTruck {
         bool sendCurrentStatus();
         std::string listenForLeading();
         std::string listenForBroadcast();
-        void emergencyBrake();
+        bool emergencyBrake();
         int obstacleAvoidance();
         bool alertObstacleDetection();
 //        void startBraking();
-        int getRetryTimes();
         void resetRetryCounter();
-        std::string getTruckStatus();
+        std::string processCommands(std::string leading_rsp);
+
+        // setters
+        void setTruckSpeed(double speed) { this->truck_speed = speed; }
+        void setRefSpeed(double speed) { this->ref_speed = speed; }
+        void setBrakeForce(double brake_value) { this->brake_force = brake_value; }
+        
+        // getters
+        std::string getTruckStatus() { return this->truck_status; }
+        double getRefSpeed() { return this->ref_speed; }
+        double getTruckSpeed() { return this->truck_speed; }
+        double getTruckFrontDistance() { return this->truck_front_d; }
+        double getTruckBackDistance() { return this->truck_back_d; }
+        double getTruckLeadDistance() { return this->truck_lead_d; }
+        double getTruckLatLoc() { return this->truck_lat_loc; }
+        double getTruckLonLoc() { return this->truck_lon_loc; }
+        double getBrakeForce() { return this->brake_force; }
+        int getRetryTimes() { return this->retry_times; }
 
 
     private:
+
+
         int retry_times;
         int tcp_port;
         int udp_port;

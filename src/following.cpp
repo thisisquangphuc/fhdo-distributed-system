@@ -95,11 +95,13 @@ void* following_fsm(void* arg) {
     // pthread_t thread_req_lead;
     pthread_t thread_emg_brake;
 
+    int period;
+
     while (true) {
         switch (get_current_state()) {
             case IDLE: //{
                 if (request == ASK_TO_JOIN) {
-                    int period = env_get_int("LISTEN_LEADING_PERIOD", 1);
+                    period = env_get_int("LISTEN_LEADING_PERIOD", 1);
                     if (followingTruck.askToJoinPlatoon()) {
                         spdlog::info("Authenticate successfully.");
                         next_state = JOINING;
@@ -138,7 +140,7 @@ void* following_fsm(void* arg) {
                 if (leadingNoti == BRAKING) {
                     spdlog::info("Receive emergency brake from LEADING truck.");
 //                    followingTruck.startBraking();
-                    pthread_create(&thread_emg_brake, NULL, &emergency_brake, NULL);
+//                    pthread_create(&thread_emg_brake, NULL, &emergency_brake, NULL);
                     next_state = EMERGENCY_BRAKE;
                 }
 
@@ -170,17 +172,24 @@ void* following_fsm(void* arg) {
                 break;
             //}
             case EMERGENCY_BRAKE: //{
-                if (leadingNoti != BRAKING) {
-                    pthread_join(thread_emg_brake, NULL);
+//                if (leadingNoti != BRAKING) {
+//                    pthread_join(thread_emg_brake, NULL);
+//                    next_state = NORMAL_OPERATION;
+//                }
+                period = env_get_int("LISTEN_LEADING_PERIOD", 1);
+                if (!followingTruck.emergencyBrake()) {
                     next_state = NORMAL_OPERATION;
+                    sleep(period);
                 }
                 prev_state = current_state;
                 break;
             //}
             case CONNECTION_LOST: //{
+                period = env_get_int("LISTEN_LEADING_PERIOD", 1);
                 if (followingTruck.sendCurrentStatus()) {
                     followingTruck.resetRetryCounter();
                     next_state = prev_state;
+                    sleep(period);
                 }
                 break;  
             //}
