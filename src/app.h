@@ -26,11 +26,11 @@ using json = nlohmann::json;
 
 class AppStateMachine {
     private:
-        enum class State { INIT, IDLE, NORMAL_OPERATION, EMERGENCY, CONNECTION_LOST, INVALID_TASKS };
-        State currentState;
         vector<std::string> pre_shared_keys;
 
     public:
+        enum class State { INIT, IDLE, NORMAL_OPERATION, EMERGENCY, CONNECTION_LOST, INVALID_TASKS };
+        State currentState;
         AppStateMachine() : currentState(State::INIT) {}
 
         void init();
@@ -82,7 +82,13 @@ class AppStateMachine {
         }
 
         void switchToNormal() {
+            spdlog::warn("Switching to NORMAL_OPERATION state.");
             currentState = State::NORMAL_OPERATION;
+        }
+
+        void switchToInvalidTasks() {
+            spdlog::warn("Switching to INVALID_TASKS state.");
+            currentState = State::INVALID_TASKS;
         }
 };
 

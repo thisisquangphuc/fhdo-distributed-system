@@ -27,7 +27,7 @@ class PlatoonServer {
 
     public:
         PlatoonServer(int port);
-
+      
         ~PlatoonServer();
 
         void setPort(int port) { this->port = port; }
@@ -46,14 +46,7 @@ class PlatoonServer {
             send(clientSocket, response.c_str(), response.size(), 0);
         }
 
-        std::string generateTruckID() {
-            // Generate a unique Truck ID
-            uuid_t uuid;
-            char uuidStr[37];
-            uuid_generate(uuid);
-            uuid_unparse(uuid, uuidStr);
-            return std::string("TR00") + std::string(uuidStr);
-        }
+        std::string generateTruckID();
 
 };
 

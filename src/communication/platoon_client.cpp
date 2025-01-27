@@ -104,16 +104,16 @@ bool PlatoonClient::sendMessage(std::string mess, std::string &error_message) {
 }
 
 // 
-std::string PlatoonClient::receiveMessage() {
+std::string PlatoonClient::receiveTCPMessage() {
     char buffer[1024] = {0};
 
     while (true) {
         int bytesReceived = recv(tcpSocket, buffer, sizeof(buffer), 0);
-        printf("[%s]-%d %s\n", __func__, bytesReceived, buffer);
+        printf("[%s]: %s\n", __func__, buffer);
 
 //        if (bytesReceived <= 0) {
 //          std::cout << "Connection is closed.";
-//          break;
+//          return "closed";
 //        }
 
         std::string receivedMessage(buffer, bytesReceived);

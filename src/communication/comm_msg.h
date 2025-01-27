@@ -68,6 +68,13 @@ class TruckMessage {
         }
 
         // Getters
+        // "test":true - get isTesting
+        bool isTesting() const { 
+            if (payload.contains("test")) {
+                return payload["test"];
+            }
+            return false;
+        }
         std::string getTruckID() const { return payload.value("truck_id", ""); }
         std::string getCommand() const { return payload.value("cmd", ""); }
         double getLatitude() const { return payload["contents"]["location"].value("lat", 0.0); }
