@@ -1,12 +1,15 @@
 # Build directories
 /build/
+/tests/build/
 /bin/
+/tests/build/
 /CMakeFiles/
 /CMakeCache.txt
 /Debian/
 /Makefile
 /.idea/
 /.vscode/
+/run_dir*/
 
 # Compiled class file
 *.class
@@ -35,3 +38,9 @@ replay_pid*
 
 # OS generated files
 .DS_Store
+
+# swap opening files
+.*.swp
+
+# Others
+run.sh

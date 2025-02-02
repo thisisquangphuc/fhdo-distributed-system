@@ -42,6 +42,15 @@ extern "C"
         return atoi(val);
     }
 
+    inline int env_get_double(const char *name, double def)
+    {
+        char *val = getenv(name);
+        if (val == NULL || val[0] == '\0')
+            return def;
+        return atof(val);
+    }
+    
+
     inline bool env_get_bool(const char *name)
     {
         char *val = getenv(name);

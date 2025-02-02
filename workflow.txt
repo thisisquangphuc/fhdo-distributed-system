@@ -3,9 +3,13 @@
 - Joining msg (....)
 - LEading cal -> Ok -> sync(gps,xxx) 
                 -> slow down, new truck is joining 
+
 - Following -> distance_cal() -> sysnc ok -> Leading 
+                -> status -> Leading.
 
 - Leading -> update trucks info 
+
+- LEading -> 
 
 1.5 Normal operation 
 - Send msg (info), period T t(s) 
@@ -31,4 +35,35 @@
 - LEadingtruck cal -> send to other trucks 
                     -> slow down
 
+{
+    "truck_id":"aaaa",
+    "cmd":"auth", //auth,leave,join,communicate,emergency,obstacle
+    "contents": {
+        "location":{
+            "lat": 37.7749,
+            "lon": -122.4194
+        },
+        "distance":{
+            "front": 10,
+            "back": 10,
+            "lead": 10
+        },
+        "speed": 60,
+        "status": "normal", //running, stopped, emergency, error
+        "brake_force": 0, //0.0 -> 1.0
+        "error_code": "ER001"
+    }
+    "msg_id":uuid,
+    "timestamp":timestamp
+}
 
+TODO: Define commands, parse class
+
+
+private class MsgFrame {
+    private: 
+
+    public: 
+        get_type:
+
+} 
