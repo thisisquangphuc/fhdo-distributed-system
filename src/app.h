@@ -20,6 +20,7 @@
 #include "communication/comm_msg.h"
 #include "utils/keygen.h"
 #include "control/monitor.h"
+#include "control/trucks_manager.h"
 
 using namespace std;
 using json = nlohmann::json;

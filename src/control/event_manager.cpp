@@ -90,14 +90,14 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
         TruckManager& truckManager = TruckManager::getInstance();
         // Get truck id
         string id = msg.getTruckID();
-        int leaveSocket = truckManager.getSocketId(id);
         
         //Check command
         if (msg.getCommand() == "leave_done") {
             //Remove the leaving truck from the platoon
-            spdlog::info("Truck {} leave done, remove from platoon", id);
+            spdlog::info("Remove Truck: {} from platoon", id);
             truckManager.removeTruck(id);
-            
+            spdlog::info("Leave process is done.", id);
+
             // Send "sync" command to all trucks
             PlatoonDataManager& platoon_data = PlatoonDataManager::getInstance();
             // increase speed
@@ -109,10 +109,11 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
             TruckMessage rspMsg;
             rspMsg.setCommand("sync");
 
+            spdlog::info("Sending synchronized platoon data to trucks....");
             vector<pair<string, int>> allTrucks = truckManager.getTrucks();
             for (const auto& truck : allTrucks) {
                 cli_socket = truckManager.getSocketId(truck.first);
-                PlatoonServer::sendResponse(cli_socket, data);
+                PlatoonServer::sendResponse(cli_socket, rspMsg.buildPayload(data));
             }
 
             return;
@@ -159,6 +160,7 @@ void TruckEventFSM::handleLeave(const TruckMessage& msg){
 
         //Response to leaving truck
         rspMsg.setCommand("leave_start");
+        int leaveSocket = truckManager.getSocketId(id);
         PlatoonServer::sendResponse(leaveSocket, rspMsg.buildPayload(data));
 
     } catch (const std::invalid_argument& e) {

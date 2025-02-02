@@ -39,11 +39,27 @@ void AppStateMachine::init() {
 void AppStateMachine::idle() {
     // Logic for idle state
     // cout << "Truck is in IDLE state." << endl;
+    currentState = State::NORMAL_OPERATION;
+    spdlog::info("Transiting from IDLE to NORMAL_OPERATION");
 }
 
 void AppStateMachine::normalOperation() {
     // Logic for normal operation
-    // Just process message from the queue
+    
+    // send synchronized platoon data to trucks
+    PlatoonDataManager& platoon_data = PlatoonDataManager::getInstance();
+    json data = platoon_data.getPlatoonDataJSON();
+    TruckMessage rspMsg;
+    rspMsg.setCommand("sync");
+
+    TruckManager& truckManager = TruckManager::getInstance();
+    vector<pair<string, int>> allTrucks = truckManager.getTrucks();
+    for (const auto& truck : allTrucks) {
+        int cli_socket = truckManager.getSocketId(truck.first);
+        PlatoonServer::sendResponse(cli_socket, rspMsg.buildPayload(data));
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 }
 
 void AppStateMachine::emergencyBrake() {

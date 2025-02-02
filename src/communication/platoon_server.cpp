@@ -25,7 +25,9 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
     string truck_id = "";
     while (true) {
         // Clear rawMessage to handle subsequent messages
+        memset(buffer, 0, sizeof(buffer));
         rawMessage.clear();
+        body.clear();
         int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
         if (bytesReceived <= 0) {
             std::cout << "Connection closed by truck.\n";
@@ -33,6 +35,9 @@ void PlatoonServer::handleTruckSocket(int clientSocket) {
         }
 
         // std::string message(buffer, bytesReceived);
+        //print buffer and bytesReceived as a string
+        // std::cout << "Received " << bytesReceived << " bytes from truck.\n";
+        // std::cout << "Buffer: " << buffer << "\n";
         // Append received data to the raw message
         rawMessage.append(buffer, bytesReceived);
 
@@ -254,7 +259,8 @@ void UDPBroadcastServer::initialize(uint16_t port) {
 
     broadcastAddress.sin_family = AF_INET;
     broadcastAddress.sin_port = htons(port);
-    broadcastAddress.sin_addr.s_addr = inet_addr("127.0.0.1");//INADDR_BROADCAST; // Broadcast address
+    string host_ip = env_get("HOST_IP", "127.0.0.1");
+    broadcastAddress.sin_addr.s_addr = inet_addr(host_ip.c_str());//INADDR_BROADCAST; // Broadcast address
 }
 
 std::string PlatoonServer::generateTruckID() {

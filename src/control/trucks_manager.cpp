@@ -29,7 +29,7 @@ void TruckManager::removeTruck(const std::string& truck_id) {
     }
     if (removeOrder == -1) {
         // throw std::invalid_argument("Truck ID not found.");
-        spdlog::error("Truck ID not found.");
+        spdlog::warn("Truck ID not found or Truck is already removed/disconnected.");
         return;
     }
 
@@ -77,7 +77,8 @@ int TruckManager::getSocketId(const std::string& truck_id) const {
             return data.second;
         }
     }
-    throw std::invalid_argument("Truck ID not found.");
+    return -1;
+    // throw std::invalid_argument("Truck ID not found.");
 }
 
 bool TruckManager::isSlotAvailable() const {
